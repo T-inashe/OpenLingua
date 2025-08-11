@@ -1,0 +1,108 @@
+Team Setup Guide - Language Learning Platform
+Quick Start Checklist ✅(make sure you have done everything below before you continue, Please resist the urge to text
+                          me before reading this document)
+
+ -Clone the repository
+ -Make sure you have Node.js installed (v18+ recommended)
+ -Set up frontend dependencies
+ -Set up backend dependencies
+ -Create environment files
+ -Run tests to verify setup
+ -Start both servers
+
+-------------------------------------------------------------------------------------------------------------
+
+Step 1: Clone the Repository
+git clone https://github.com/T-inashe/OpenLingua.git
+cd language-learning-platform
+
+# Verify project structure
+- You should have have the following folders/files: backend, frontend, docs and README.md
+
+------
+
+Step 2: Frontend Setup
+cd frontend
+
+# Install all dependencies
+    npm install
+
+# Start development server
+    npm run dev
+Expected Result:
+
+Development server starts on http://localhost:5173
+Should see bogus fullname form
+
+-----
+
+Step 3: Backend Setup
+
+    cd ../backend
+
+# Install all dependencies
+    npm install
+
+# Create environment file
+    cp  .env
+# OR manually create .env file (see below)
+    Create .env File
+Create backend/.env with these contents:
+    DATABASE_URL="postgresql://postgres.ryrwplqdzckgjxqzcxch:NWJ-hpErBu2.W*6@aws-1-sa-east-1.pooler.supabase.com:5432/postgres"
+    
+
+# Start development server
+    npm run dev
+Expected Result:
+You should see "Server running on http://localhost:3001"
+
+----
+
+Browser Test:
+
+Frontend: http://localhost:5173 - Should show React app
+Backend API: http://localhost:3001 - Should show API info
+Health check: http://localhost:3001/health - Should show health status
+
+
+
+
+Common Issues & Solutions
+Issue: "command not found: npm"
+Solution: Install Node.js from nodejs.org
+Issue: Port already in use
+Solution:
+bash# Kill process using port 3001
+lsof -ti:3001 | xargs kill -9
+
+
+Issue: CORS errors in browser console
+Solution: Make sure backend is running on port 3001 and has cors middleware enabled
+
+
+Before Committing Code!!!!!!
+bash# Run all tests
+cd frontend && npm test
+cd ../backend && npm test
+
+# If tests pass, commit your changes
+git add .
+git commit -m "Your commit message"
+git push
+Working on Features
+
+Create a new branch: git checkout -b feature/your-feature-name
+Make your changes
+Run tests: npm test (in both frontend and backend)
+Commit and push
+Create a pull request
+
+
+Getting Help
+
+Project Issues: Check existing GitHub issues or create a new one
+Setup Problems: Ask on the whatsapp group or create a GitHub issue
+Code Questions: Review the main setup guide in /docs/ or ask in group
+
+We not settling for anything less than 100% this time around commrades 
+Happy coding! 
