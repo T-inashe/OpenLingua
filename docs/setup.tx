@@ -48,7 +48,7 @@ Step 3: Backend Setup
 # OR manually create .env file (see below)
     Create .env File
 Create backend/.env with these contents:
-    DATABASE_URL="postgresql://postgres.ryrwplqdzckgjxqzcxch:NWJ-hpErBu2.W*6@aws-1-sa-east-1.pooler.supabase.com:5432/postgres"
+    DATABASE_URL="dm and I will send through"
     
 
 # Start development server
