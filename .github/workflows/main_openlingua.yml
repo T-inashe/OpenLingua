@@ -27,7 +27,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: ./backend
 
   deploy:
     runs-on: ubuntu-latest
@@ -56,4 +56,5 @@ jobs:
           app-name: 'openlingua'
           slot-name: 'Production'
           package: .
+
           
