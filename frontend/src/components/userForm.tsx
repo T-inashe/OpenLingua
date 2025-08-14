@@ -1,200 +1,51 @@
 import { useState } from 'react';
+import config from '../config'
 
-interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
-interface ApiResponse {
-  success: boolean;
-  message: string;
-  data?: any;
-  errors?: string[];
-}
-
-export default function UserForm() {
-  const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    email: ''
-  });
+export default function GoogleLoginButton() {
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear errors when user starts typing
-    if (errors.length > 0) {
-      setErrors([]);
-    }
-    if (message) {
-      setMessage(null);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setMessage(null);
-    setErrors([]);
-
+  const handleGoogleLogin = () => {
     try {
-      const response = await fetch('http://localhost:3001/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(formData)
-      });
+      setIsLoading(true);
+      setError(null);
 
-      const data: ApiResponse = await response.json();
-
-      if (data.success) {
-        setMessage({ type: 'success', text: data.message || 'User created successfully!' });
-        // Reset form
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: ''
-        });
-      } else {
-        if (data.errors && data.errors.length > 0) {
-          setErrors(data.errors);
-        } else {
-          setMessage({ type: 'error', text: data.message || 'Something went wrong!' });
-        }
-      }
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      setMessage({ type: 'error', text: 'Failed to connect to server. Please try again.' });
-    } finally {
+      window.location.href = `${config.BACKEND_URL}/api/auth/google`;
+    } catch (err) {
+      console.error('Google login error:', err);
+      setError('Unable to connect to authentication server.');
       setIsLoading(false);
     }
   };
 
-  const isFormValid = formData.firstName.trim() && formData.lastName.trim() && formData.email.trim();
-
   return (
-    <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Create User</h2>
-      
-      <div className="space-y-4">
-        {/* First Name */}
-        <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-            First Name *
-          </label>
-          <input
-            type="text"
-            id="firstName"
-            name="firstName"
-            value={formData.firstName}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-            placeholder="Enter your first name"
-            disabled={isLoading}
-            required
-          />
-        </div>
-
-        {/* Last Name */}
-        <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-            Last Name *
-          </label>
-          <input
-            type="text"
-            id="lastName"
-            name="lastName"
-            value={formData.lastName}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-            placeholder="Enter your last name"
-            disabled={isLoading}
-            required
-          />
-        </div>
-
-        {/* Email */}
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-            Email *
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-            placeholder="Enter your email address"
-            disabled={isLoading}
-            required
-          />
-        </div>
-
-        {/* Error Messages */}
-        {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3">
-            <ul className="text-sm text-red-600 space-y-1">
-              {errors.map((error, index) => (
-                <li key={index} className="flex items-center">
-                  <span className="w-1 h-1 bg-red-600 rounded-full mr-2"></span>
-                  {error}
-                </li>
-              ))}
-            </ul>
+    <div className="w-full">
+      <button
+        onClick={handleGoogleLogin}
+        disabled={isLoading}
+        className="flex items-center justify-center w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm 
+                   text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 
+                   disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+      >
+        {isLoading ? (
+          <div className="flex items-center">
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2"></div>
+            Connecting...
           </div>
+        ) : (
+          <>
+            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#4285F4" d="M21.35 11.1H12v2.82h5.38c-.23 1.23-.93 2.27-1.97 2.95v2.45h3.18c1.86-1.72 2.93-4.25 2.93-7.22 0-.63-.06-1.24-.17-1.83z" />
+              <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.61-2.43l-3.18-2.45c-.88.59-2 .93-3.43.93-2.64 0-4.87-1.78-5.66-4.18H3.05v2.54C4.69 19.99 8.09 22 12 22z" />
+              <path fill="#FBBC05" d="M6.34 13.87c-.2-.59-.31-1.22-.31-1.87 0-.65.11-1.28.31-1.87V7.59H3.05A9.99 9.99 0 0 0 2 12c0 1.61.39 3.13 1.05 4.41l3.29-2.54z" />
+              <path fill="#EA4335" d="M12 6.54c1.47 0 2.79.51 3.83 1.51l2.86-2.86C16.96 3.9 14.7 3 12 3 8.09 3 4.69 5.01 3.05 7.59l3.29 2.54c.79-2.4 3.02-4.18 5.66-4.18z" />
+            </svg>
+            Continue with Google
+          </>
         )}
+      </button>
 
-        {/* Success/Error Message */}
-        {message && (
-          <div className={`p-3 rounded-md ${
-            message.type === 'success' 
-              ? 'bg-green-50 border border-green-200 text-green-700' 
-              : 'bg-red-50 border border-red-200 text-red-700'
-          }`}>
-            <div className="flex items-center">
-              <span className={`w-2 h-2 rounded-full mr-2 ${
-                message.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-              }`}></span>
-              {message.text}
-            </div>
-          </div>
-        )}
-
-        {/* Submit Button */}
-        <button
-          onClick={handleSubmit}
-          disabled={!isFormValid || isLoading}
-          className={`w-full py-2 px-4 rounded-md font-medium transition duration-200 ${
-            isFormValid && !isLoading
-              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          {isLoading ? (
-            <div className="flex items-center justify-center">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-              Creating User...
-            </div>
-          ) : (
-            'Create User'
-          )}
-        </button>
-      </div>
-
-      <div className="mt-4 text-xs text-gray-500 text-center">
-        * Required fields
-      </div>
+      {error && <p className="mt-2 text-sm text-red-600 text-center">{error}</p>}
     </div>
   );
 }
