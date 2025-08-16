@@ -49,6 +49,9 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_05DD8D6835B74C49AEE87C171378FE54 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0824921626B645289554DCF38F51EF23 }}
 
+      - name: Clean target wwwroot before deploy
+        run: rm -rf /home/site/wwwroot/*
+
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
@@ -56,3 +59,4 @@ jobs:
           app-name: 'openlingua'
           slot-name: 'Production'
           package: '.'
+
