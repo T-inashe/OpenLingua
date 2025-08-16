@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "concurrently \"npm run server\" \"npm run start\"",
-    "test": "jest"
+    "test": "jest --coverage"
   },
   "keywords": [],
   "author": "",
