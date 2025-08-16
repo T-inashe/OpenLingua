@@ -1,18 +1,24 @@
 {
   "name": "openlingua-backend",
   "version": "1.0.0",
-  "type": "module",
+  "description": "",
+  "type": "commonjs",
+  "main": "server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/server.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.13.0",
+    "@prisma/client": "^6.14.0",
     "bcryptjs": "^3.0.2",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "express-rate-limit": "^8.0.1",
     "helmet": "^8.1.0",
@@ -24,28 +30,9 @@
     "passport-microsoft": "^2.1.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/compression": "^1.8.1",
-    "@types/cookie-parser": "^1.4.9",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
-    "@types/jest": "^30.0.0",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/morgan": "^1.9.10",
-    "@types/node": "^24.2.1",
-    "@types/passport": "^1.0.17",
-    "@types/passport-google-oauth20": "^2.0.16",
-    "@types/supertest": "^6.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.39.0",
-    "@typescript-eslint/parser": "^8.39.0",
-    "eslint": "^9.33.0",
     "jest": "^30.0.5",
     "nodemon": "^3.1.10",
-    "prisma": "^6.13.0",
-    "supertest": "^7.1.4",
-    "ts-jest": "^29.4.1",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.20.3",
-    "typescript": "^5.9.2"
+    "prisma": "^6.14.0",
+    "supertest": "^7.1.4"
   }
 }
