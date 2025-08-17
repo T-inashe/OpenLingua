@@ -1,14 +1,21 @@
 import { useState } from 'react';
-import { useNavigate } from "react-router-dom";
 import config from '../config'
 
 export default function GoogleLoginButton() {
-      const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleGoogleLogin = () => {
-   navigate("/landingPage");
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      window.location.href = `${config.BACKEND_URL}/api/auth/google`;
+    } catch (err) {
+      console.error('Google login error:', err);
+      setError('Unable to connect to authentication server.');
+      setIsLoading(false);
+    }
   };
 
   return (
