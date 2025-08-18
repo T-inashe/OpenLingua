@@ -26,7 +26,7 @@ const SignUp: React.FC = () => {
     confirmPassword: ''
   });
   const [errors, setErrors] = useState<Errors>({});
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -98,28 +98,6 @@ const SignUp: React.FC = () => {
     }
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Errors = {};
-    
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) { // Match backend requirement
-      newErrors.password = 'Password must be at least 8 characters';
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   const handleSubmit =  () => {
         setTempUserData({
