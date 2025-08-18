@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import config from "../config";
+import { Link } from "react-router-dom";
 
 const menus = ['Home', 'About', 'Service', 'Contact']
 
@@ -70,9 +71,11 @@ const LandingPage = () => {
                             })
                         }
                     </div>
-                    <button onClick={handleGoogleLogin} className={`bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 transform ${isVisible? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-                        Sign In
-                    </button>
+                    <Link to='/signIn'>
+                        <button  className={`bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 transform ${isVisible? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                            Sign In
+                        </button>
+                    </Link>
 
                   
                 </div>
@@ -80,7 +83,6 @@ const LandingPage = () => {
 
 
         </header>
-
         <section className="relative container mx-auto z-20 px-10 py-20">
             <div className="text-center">
                 <h1 className={`text-6xl md:text-8xl font-bold mb-8 transition-all duration-1500 delay-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
@@ -94,12 +96,19 @@ const LandingPage = () => {
                     Learn a new language at your own pace
                 </p>
                 <div className={`flex flex-col sm:flex-row gap-6 justify-center items-center transition-all duration-1000 delay-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
-                    <button onClick={handleGoogleLogin} className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-purple-500/30 transition-all duration-300 hover:scale-110 transform hover:-translate-y-1">
+                    <Link to='/signIn'>
+                    <button className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-purple-500/30 transition-all duration-300 hover:scale-110 transform hover:-translate-y-1">
                         Start Your Journey
                     </button>
+                    </Link>
                     <button className="border-2 border-gray-400 text-gray-300 px-8 py-4 rounded-full text-lg font-semibold hover:border-white hover:text-white hover:shadow-xl transition-all duration-300 hover:scale-110 transform">
                         Watch Demo
                     </button>
+                </div>
+            </div>
+        </section>
+
+
 
                 </div>
             </div>
@@ -145,7 +154,6 @@ const LandingPage = () => {
     </div>
   )
 }
-
 
 export default LandingPage
 
