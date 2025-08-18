@@ -1,1 +1,3 @@
-node_modules/\n.env\n*.log\n.DS_Store\ndist/\nbuild/
+node_modules/
+dist/
+.env
