@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, BookOpen, TrendingUp, Users, Star, Clock, Award, Settings, Bell } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -163,6 +164,12 @@ const Dashboard = () => {
               </button>
             </div>
           </div>
+
+                    <Link to="/">
+                        <button className={`bg-gradient-to-r m-16 from-cyan-500 to-purple-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 transform ${isVisible? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                            Log Out
+                        </button>
+                    </Link>
         </aside>
 
         {/* Main Content */}
