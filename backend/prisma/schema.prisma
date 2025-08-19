@@ -11,18 +11,63 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  password    String?  // Optional for OAuth users
-  name        String   // Single name field
-  avatar      String?
-  
+  id            String             @id @default(cuid())
+  email         String             @unique
+  password      String?
+  name          String
+  avatar        String?
+  joinedCourses CourseEnrollment[]
+  forumPosts    ForumPost[]
   // OAuth fields
-  googleId    String? @unique
-  microsoftId String? @unique
-  
+  googleId      String?            @unique
+  microsoftId   String?            @unique
+
+  // ✅ Add this line:
+  coursesTaught Course[] @relation("CourseInstructor")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("users")
+}
+
+model Course {
+  id          String @id @default(cuid())
+  title       String
+  description String
+
+  // ✅ Add the relation name here:
+  instructor   User   @relation("CourseInstructor", fields: [instructorId], references: [id])
+  instructorId String
+
+  words       Word[]
+  enrollments CourseEnrollment[]
+  forumPosts  ForumPost[]
+}
+
+model CourseEnrollment {
+  id       String @id @default(cuid())
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+}
+
+model Word {
+  id       String @id @default(cuid())
+  term     String
+  meaning  String
+  usage    String
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+}
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  content   String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  String
+  createdAt DateTime @default(now())
 }

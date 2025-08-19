@@ -6,7 +6,9 @@ const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth');
 const passport = require('./config/passport');
-
+const courseRoutes = require("./routes/courseRoutes");
+const forumRoutes = require("./routes/forumRoutes");
+const vocabRoutes = require("./routes/vocabRoutes");
 const app = express();
 
 app.use(helmet());
@@ -18,14 +20,14 @@ app.use(cors({
 }));
 
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 15 * 60 * 10000000,
+  max: 1000,
   message: { error: "Too many requests, please try again later" }
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
+  windowMs: 15 * 60 * 10000,
+  max: 5000,
   message: { error: "Too many authorisation attempts, please try again later" }
 });
 
@@ -41,6 +43,9 @@ app.use(passport.initialize());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/forum", forumRoutes);
+app.use("/api/vocab", vocabRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Language Learning API is running!', timestamp: new Date().toISOString() });
