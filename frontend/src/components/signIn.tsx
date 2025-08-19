@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import config from "../config";
+import { navigateTo } from "../utils/navigate";
 import { Link } from "react-router-dom";
 
 // Type definitions
@@ -29,7 +30,7 @@ const SignIn: React.FC = () => {
 
   const handleGoogleLogin = (): void => {
     try {
-      window.location.href = `${config.BACKEND_URL}/api/auth/google`;
+      navigateTo(`${config.BACKEND_URL}/api/auth/google`);
     } catch (err) {
       console.error('Google login error:', err);
     }
@@ -37,7 +38,7 @@ const SignIn: React.FC = () => {
 
   const handleMicrosoftLogin = (): void => {
     try {
-      window.location.href = `${config.BACKEND_URL}/api/auth/microsoft`;
+      navigateTo(`${config.BACKEND_URL}/api/auth/microsoft`);
     } catch (err) {
       console.error('Microsoft login error:', err);
     }

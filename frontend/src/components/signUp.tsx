@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import config from "../config";
+import { navigateTo } from "../utils/navigate";
 import { Link, useNavigate } from "react-router-dom";
 import ProfileForm from "./profileForm";
 
@@ -84,7 +85,7 @@ const SignUp: React.FC = () => {
 
   const handleGoogleLogin = (): void => {
     try {
-      window.location.href = `${config.BACKEND_URL}/api/auth/google`;
+      navigateTo(`${config.BACKEND_URL}/api/auth/google`);
     } catch (err) {
       console.error('Google login error:', err);
     }
@@ -92,7 +93,7 @@ const SignUp: React.FC = () => {
 
   const handleMicrosoftLogin = (): void => {
     try {
-      window.location.href = `${config.BACKEND_URL}/api/auth/microsoft`;
+      navigateTo(`${config.BACKEND_URL}/api/auth/microsoft`);
     } catch (err) {
       console.error('Microsoft login error:', err);
     }

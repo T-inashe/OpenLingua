@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "jest --coverage"
+    "test": "jest --coverage --no-cache --watchAll=false"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.16",
