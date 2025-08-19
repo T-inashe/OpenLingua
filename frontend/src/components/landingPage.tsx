@@ -38,7 +38,7 @@ const LandingPage = () => {
         },
     ]
 
-
+    // @ts-ignore
     const handleGoogleLogin = () => {
         try {
           window.location.href = `${config.BACKEND_URL}/api/auth/google`;
@@ -108,11 +108,6 @@ const LandingPage = () => {
             </div>
         </section>
 
-
-
-                </div>
-            </div>
-        </section >
         <section className="relative container z-10 mx-auto px-10 py-20">
             <div className="text-center mb-16">
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
