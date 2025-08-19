@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from "react";
-import config from "../config";
+import { Link } from "react-router-dom";
 
 const menus = ['Home', 'About', 'Testimonials', 'Contact']
 
@@ -64,14 +63,6 @@ const LandingPage = () => {
         
     ]
 
-    const handleGoogleLogin = () => {
-        try {
-          window.location.href = `${config.BACKEND_URL}/api/auth/google`;
-        } catch (err) {
-          console.error('Google login error:', err);
-        }
-      };
-    
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-hidden">
 
@@ -102,10 +93,11 @@ const LandingPage = () => {
                             );
                         })}
                     </div>
-
-                    <button onClick={handleGoogleLogin} className={`bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 transform ${isVisible? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-                        Sign In
-                    </button>
+                    <Link to="/signIn">
+                        <button className={`bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 transform ${isVisible? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                            Sign In
+                        </button>
+                    </Link>
 
                   
                 </div>
@@ -127,9 +119,11 @@ const LandingPage = () => {
                     Learn a new language at your own pace
                 </p>
                 <div className={`flex flex-col sm:flex-row gap-6 justify-center items-center transition-all duration-1000 delay-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
-                    <button onClick={handleGoogleLogin} className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-purple-500/30 transition-all duration-300 hover:scale-110 transform hover:-translate-y-1">
-                        Start Your Journey
-                    </button>
+                    <Link to="signIn">
+                        <button  className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-purple-500/30 transition-all duration-300 hover:scale-110 transform hover:-translate-y-1">
+                            Start Your Journey
+                        </button>
+                    </Link>
                     <button className="border-2 border-gray-400 text-gray-300 px-8 py-4 rounded-full text-lg font-semibold hover:border-white hover:text-white hover:shadow-xl transition-all duration-300 hover:scale-110 transform">
                         Watch Demo
                     </button>
@@ -140,9 +134,9 @@ const LandingPage = () => {
         <section id ="about" className="relative container z-10 mx-auto px-10 py-20">
             <div className="text-center mb-16">
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                    Our{" "}
+                    About{" "}
                     <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                        Services
+                        Us
                     </span>
                 </h2>
                 <p className="text-gray-300 text-lg max-w-2xl mx-auto">
@@ -212,7 +206,7 @@ const LandingPage = () => {
                 </div>
 
                     <div className="flex justify-center mt-8 space-x-3">
-                        {testimonials.map((item: any, index: number) => (
+                        {testimonials.map((_item: any, index: number) => (
                             <button
                                 key={index}
                                 className={`w-3 h-3 rounded-full transition-all duration-300 ${index == activeTestimonial ? 'bg-gradient-to-r from-cyan-400 to-purple-400': 'bg-gray-600 hover:bg-gray-500' }`}
@@ -234,4 +228,3 @@ const LandingPage = () => {
   )
 }
 export default LandingPage
-
