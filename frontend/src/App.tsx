@@ -3,20 +3,21 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import LandingPage from './components/landingPage';
 import SignIn from './components/signIn'
 import SignUp from './components/signUp';
-import CourseList from './components/courseList';
-import CreateCourse from './components/createCourse';
 import CourseDashboard from './components/courseDashboard';
+import Dashboard from './components/dashboard';
+import CourseCreation from './components/courseCreation';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        {/* <Route path="/" element={<LandingPage />} /> */}
         <Route path="/signIn" element={<SignIn />} />
         <Route path="/signUp" element={<SignUp />}/>
-        <Route path="/dashboard" element={<CourseList />} />
-        <Route path="/create" element={<CreateCourse />} />
-        <Route path="/course/:id" element={<CourseDashboard />} />
+        <Route path="/create/:id" element={<CourseCreation/>} />
+        <Route path="/course/:id/:uid" element={<CourseDashboard />} />
+        <Route path="/dashboard" element={<Dashboard/>} />
+        <Route path="/" element={<LandingPage/>} />
       </Routes>
     </BrowserRouter>
   );

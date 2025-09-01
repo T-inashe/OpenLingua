@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import config from "../config";
 import "../css/CreateCourse.css";
 type Word = {
-  zulu: string;
-  english: string;
+  term: string;
+  meaning: string;
   usage: string;
 };
 
 export default function CreateCourse() {
-  const [name, setName] = useState("");
+  const [title, setName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [language, setLanguage] = useState("");
@@ -19,41 +19,35 @@ export default function CreateCourse() {
   const [wordEnglish, setWordEnglish] = useState("");
   const [wordUsage, setWordUsage] = useState("");
 
-  const navigate = useNavigate();
+ 
 
   const addWord = () => {
     if (!wordZulu || !wordEnglish) return;
-    setWords([...words, { zulu: wordZulu, english: wordEnglish, usage: wordUsage }]);
+    setWords([...words, { term: wordZulu, meaning: wordEnglish, usage: wordUsage }]);
     setWordZulu("");
     setWordEnglish("");
     setWordUsage("");
   };
 
-  const saveCourse = () => {
-    if (!name || !code || !description || !language) {
+
+  const createCourse = async () => {
+      if (!title || !code || !description) {
       alert("Please fill in all required fields.");
       return;
     }
-
-    const newCourse = {
-      id: Date.now(),
-      name,
-      code,
-      description,
-      language,
-      level,
-      words,
-    };
-
-    // Save to localStorage
-    const saved = localStorage.getItem("courses");
-    const courses = saved ? JSON.parse(saved) : [];
-    courses.push(newCourse);
-    localStorage.setItem("courses", JSON.stringify(courses));
-
-    alert("Course created successfully!");
-    navigate("/");
-  };
+  await fetch(`${config.BACKEND_URL}/api/courses/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: title,
+      code: code,
+      description: description,
+      words: words,
+    }),
+  });
+//  fetchCourses(); // refresh
+ 
+};
 
   return (
     <div className="create-course" style={{ padding: "1.5rem" }}>
@@ -62,7 +56,7 @@ export default function CreateCourse() {
       <div style={{ marginBottom: "1rem" }}>
         <label>Course Name *</label>
         <input
-          value={name}
+          value={title}
           onChange={(e) => setName(e.target.value)}
           style={{ display: "block", width: "100%", marginBottom: "1rem" }}
         />
@@ -124,12 +118,12 @@ export default function CreateCourse() {
       <ul>
         {words.map((w, i) => (
           <li key={i}>
-            <strong>{w.zulu}</strong> = {w.english} <em>({w.usage})</em>
+            <strong>{w.term}</strong> = {w.meaning} <em>({w.usage})</em>
           </li>
         ))}
       </ul>
 
-      <button onClick={saveCourse} className="join-btn" style={{ marginTop: "1rem" }}>
+      <button onClick={createCourse} className="join-btn" style={{ marginTop: "1rem" }}>
         Save Course
       </button>
     </div>

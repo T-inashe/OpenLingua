@@ -1,27 +1,63 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "../css/Courses.css";
-type Course = {
-  id: number;
-  name: string;
-  code: string;
-};
+import config from "../config";
+
 
 export default function CourseList() {
-  const [joined, setJoined] = useState<Course[]>([
-    { id: 1, name: "Mechanics II - FYR - 2025", code: "APPM2023A" },
-    { id: 2, name: "Learning Zulu - Beginner", code: "ZULU101" },
-  ]);
+ 
+const [lod,setLod] = useState('hey')
+    const [posts, setPosts] = useState<object[]>([]);
+const createCourse = async () => {
+  setLod('yes')
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/courses/`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
 
-  const [unjoined, setUnjoined] = useState<Course[]>([
-    { id: 3, name: "Numerical Methods", code: "MATH3021" },
-    { id: 4, name: "Data Structures & Algorithms", code: "CS2045" },
-  ]);
+    if (!res.ok) {
+      throw new Error("Failed to fetch courses");
+    }
 
-  const joinCourse = (course: Course) => {
-    setJoined([...joined, course]);
-    setUnjoined(unjoined.filter(c => c.id !== course.id));
-  };
+    const data = await res.json();
+   // alert(JSON.stringify(data))
+if (Array.isArray(data.courses)) {
+  setPosts(data.courses);  // Use the courses array
+} else {
+  console.error("Expected an array but got:", data);
+  setPosts([]); // fallback to empty array to avoid crashes
+}
+    setLod('no')
+    // fetchCourses(); // Uncomment if needed to refresh separately
+  } catch (error) {
+    console.error("Error fetching courses:", error);
+  }
+};
+useEffect(()=>{
+  createCourse()
+},[])
+ const joinCourse = async (id: string) => {
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/courses/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: id }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to join course with id: ${id}`);
+    }
+
+    const data = await res.json(); // Optional: handle the response data
+    alert(`Joined course:${data}`);
+
+    // fetchCourses(); // Uncomment if you want to refresh the list after joining
+  } catch (error) {
+    console.error("Error joining course:", error);
+  }
+};
+ 
 
 //  const leaveCourse = (course: Course) => {
    // setUnjoined([...unjoined, course]);
@@ -42,39 +78,33 @@ export default function CourseList() {
 
       {/* Joined Courses */}
       <section>
-        <h2 className="section-title">Joined Courses</h2>
+        <h2 className="section-title">My Courses</h2>
         <div className="course-grid">
-          {joined.map(course => (
-            <div key={course.id} className="course-card">
-              <h3>{course.code}</h3>
-              <p>{course.name}</p>
+          {lod==='no' ? posts.map(course => {
+            const c = course as { id: string; title: string };
+            return(
+
+            <div key={c.id} className="course-card">
+              <p>{c.title}</p>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                
                 <button className="leave-btn">
-                   <Link to={`/course/${course.id}`} style={{ color: "white", fontWeight: "bold" }}>
+                   <Link to={`/course/${c.id}`} style={{ color: "white", fontWeight: "bold" }}>
                   View course
                 </Link>
                 </button>
+                 <button className="join-btn" onClick={() => joinCourse(c.id)}>
+                Join Course
+              </button>
               </div>
             </div>
-          ))}
+          )}):(<p>helloooooo</p>)}
         </div>
       </section>
 
       {/* Unjoined Courses */}
       <section>
-        <h2 className="section-title">Unjoined Courses</h2>
-        <div className="course-grid">
-          {unjoined.map(course => (
-            <div key={course.id} className="course-card">
-              <h3>{course.code}</h3>
-              <p>{course.name}</p>
-              <button className="join-btn" onClick={() => joinCourse(course)}>
-                Join Course
-              </button>
-            </div>
-          ))}
-        </div>
+       
       </section>
     </div>
   );

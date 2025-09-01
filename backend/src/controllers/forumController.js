@@ -4,13 +4,13 @@ const { prisma } = require('../lib/prisma');
 const createPost = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { content } = req.body;
+    const { content,userId } = req.body;
 
     const post = await prisma.forumPost.create({
       data: {
         content,
-        userId: req.user.userId,
-        courseId: parseInt(courseId)
+        authorId: userId,
+        courseId: courseId
       }
     });
 
@@ -46,8 +46,8 @@ const getPosts = async (req, res) => {
     const { courseId } = req.params;
 
     const posts = await prisma.forumPost.findMany({
-      where: { courseId: parseInt(courseId) },
-      include: { user: true, replies: { include: { user: true } } },
+      where: { courseId: courseId},
+      include: { author: true, },
       orderBy: { createdAt: "desc" }
     });
 

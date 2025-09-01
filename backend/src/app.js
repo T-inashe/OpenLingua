@@ -26,8 +26,8 @@ const generalLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 10000,
-  max: 5000,
+  windowMs: 15 * 60 * 1000,
+  max: 50,
   message: { error: "Too many authorisation attempts, please try again later" }
 });
 

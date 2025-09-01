@@ -3,27 +3,60 @@ const { prisma } = require('../lib/prisma');
 // Create a new course (instructor only)
 const createCourse = async (req, res) => {
   try {
-    const { title, description, language, level, requirements } = req.body;
+    const { title,description, language,
+    level,
+    category,
+    hours,
+    public, // Or use a toggle if you have one
+    community,
+    discussions, // Set default or get from user
+    info,
+    instructorId, words } = req.body;
 
-    if (!title || !language) {
-      return res.status(400).json({ error: "Title and language are required" });
+    if (!title || !description) {
+      //return res.status(400).json({ error: "Title and language are required" });
     }
 
     const course = await prisma.course.create({
       data: {
         title,
+      
         description,
+          instructorId,
+          category,
+          community,
+          discussions,
+          hours,
+          info,
         language,
         level,
-        requirements,
-        instructorId: req.user.userId
+        public,
+        
+   
       }
     });
+   await Promise.all(
+  words.map(wordData =>
+    prisma.word.create({
+      data: {
+        title: wordData.title,
+        type: wordData.type,
+        duration: wordData.duration.toString(),
+        content: wordData.content,
+        courseId: course.id
+      }
+    })
+  )
+);
 
-    res.status(201).json({ message: "Course created successfully", course });
+    
+  
+   res.status(201).json({ message: "Course created successfully"});
+    
+//res.redirect(`${process.env.FRONTEND_URL}/dashboard`)
   } catch (error) {
     console.error("Create course error:", error);
-    res.status(500).json({ error: "Something went wrong creating course" });
+    res.status(500).json({ error });
   }
 };
 
@@ -44,12 +77,13 @@ const getCourses = async (req, res) => {
 // Join a course
 const joinCourse = async (req, res) => {
   try {
-    const { courseId } = req.params;
+    const { courseId, userId } = req.body;
 
-    await prisma.userCourse.create({
+    await prisma.courseEnrollment.create({
       data: {
-        userId: req.user.userId,
-        courseId: parseInt(courseId)
+        userId: userId,
+        courseId: courseId,
+        progress: "0%"
       }
     });
 
@@ -84,10 +118,10 @@ const getCourseDetails = async (req, res) => {
     const { courseId } = req.params;
 
     const course = await prisma.course.findUnique({
-      where: { id: parseInt(courseId) },
+      where: { id: courseId },
       include: {
-        vocabulary: true,
-        forumPosts: { include: { user: true, replies: true } }
+        words: true,
+        forumPosts: true
       }
     });
 
@@ -98,11 +132,236 @@ const getCourseDetails = async (req, res) => {
     res.status(500).json({ error: "Error fetching course details" });
   }
 };
+const getCoursesByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const courses = await prisma.course.findMany({
+      where: { instructorId: userId },
+      include: {
+        instructor: { select: { id: true, name: true, email: true } }
+      }
+    });
+
+    res.json({ courses });
+  } catch (error) {
+    console.error("Error fetching user's courses:", error);
+    res.status(500).json({ error: "Error fetching user's courses" });
+  }
+};
+const getJoinedCoursesByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const joinedCourses = await prisma.courseEnrollment.findMany({
+      where: { userId: userId },
+      include: {
+        course: {
+          include: {
+            instructor: { select: { id: true, name: true } }
+          }
+        }
+      }
+    });
+
+    // Return only the course data
+    const courses = joinedCourses.map(entry => entry.course);
+
+    res.json({ courses });
+  } catch (error) {
+    console.error("Error fetching joined courses:", error);
+    res.status(500).json({ error: "Error fetching joined courses" });
+  }
+};
+const getJoinedCoursesByUserIdAndCourseId = async (req, res) => {
+  try {
+    const { userId, courseId } = req.params;
+
+    const joined = await prisma.courseEnrollment.findFirst({
+      where: {
+        userId,
+        courseId,
+      },
+    });
+
+    if (!joined) {
+      return res.json({ joined: null }); // or just `{}` if you prefer
+    }
+
+    res.json({ joined }); // ✅ returns the joined enrollment record
+  } catch (error) {
+    console.error("Error fetching joined course:", error);
+    res.status(500).json({ error: "Error fetching joined course" });
+  }
+};
+
+const getJoinedCoursesByCourseId = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const joinedCourses = await prisma.courseEnrollment.findMany({
+      where: {
+        courseId: courseId
+      },
+      
+    });
+
+    res.json({ joinedCourses });
+  } catch (error) {
+    console.error("Error fetching joined courses by courseId:", error);
+    res.status(500).json({ error: "Error fetching joined courses" });
+  }
+};
+
+const getForumMessagesByCourseId = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const forumPosts = await prisma.forumPost.findMany({
+      where: { courseId: parseInt(courseId) },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        replies: {
+          include: { user: { select: { id: true, name: true } } }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ forumPosts });
+  } catch (error) {
+    console.error("Error fetching forum messages:", error);
+    res.status(500).json({ error: "Error fetching forum messages" });
+  }
+};
+const translateText = async (req, res) => {
+  try {
+    const response = await fetch('https://libretranslate.de/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+
+    const rawText = await response.text();
+    console.log("Raw response from LibreTranslate:", rawText);
+
+    if (!response.ok) {
+      throw new Error(`Translation API error: ${response.status} - ${rawText}`);
+    }
+
+    // Try to parse response safely
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (jsonError) {
+      console.error("Failed to parse JSON from translation API:", jsonError);
+      return res.status(500).json({ error: "Invalid JSON response from translation API" });
+    }
+
+    // Send back to client
+    res.json(data);
+  } catch (error) {
+    console.error("Translation error:", error);
+    res.status(500).json({ error: "Translation service failed" });
+  }
+};
+const getCourseReviews = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const reviews = await prisma.courseReview.findMany({
+      where: { courseId: courseId },
+      include: {
+        user: true,
+        course: {
+          select: {
+            id: true,
+            title: true,
+          }
+        },
+        replies: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
+            }
+          }
+        },
+        helpfulVotes: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.json({ reviews });
+  } catch (error) {
+    console.error("Error fetching course reviews:", error);
+    res.status(500).json({ error: "Error fetching course reviews" });
+  }
+};
+
+const postCourseReview = async (req, res) => {
+  try {
+    const { courseId, rating, review, userId } = req.body;// assuming authentication middleware sets req.user
+
+
+    // Optional: check if user already reviewed this course
+    const existingReview = await prisma.courseReview.findFirst({
+      where: {
+        userId,
+        courseId
+      }
+    });
+
+    if (existingReview) {
+      return res.status(409).json({ error: "User has already reviewed this course" });
+    }
+
+    const newReview = await prisma.courseReview.create({
+      data: {
+        userId,
+        courseId,
+        rating,
+        review
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        course: { select: { id: true, title: true } },
+      }
+    });
+
+    res.status(201).json({ review: newReview });
+  } catch (error) {
+    console.error("Error posting review:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
 
 module.exports = {
   createCourse,
   getCourses,
   joinCourse,
   leaveCourse,
-  getCourseDetails
+  getCourseDetails,
+  getCoursesByUserId,
+  getJoinedCoursesByUserId,
+  getForumMessagesByCourseId,
+  getJoinedCoursesByUserIdAndCourseId,
+  getJoinedCoursesByCourseId,
+  translateText,
+  getCourseReviews,
+  postCourseReview
 };
