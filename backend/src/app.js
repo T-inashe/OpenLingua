@@ -3,13 +3,24 @@ const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const { Pool } = require("pg");
 const authRoutes = require('./routes/auth');
 const passport = require('./config/passport');
 const courseRoutes = require("./routes/courseRoutes");
 const forumRoutes = require("./routes/forumRoutes");
 const vocabRoutes = require("./routes/vocabRoutes");
 const app = express();
+const pool = new Pool({
+  user: "postgres",
+  host: "localhost",
+  database: "postgres",
+  password: "0000",
+  port: 5432,
+});
+// ensure uploads folder exists
 
 app.use(helmet());
 app.use(cors({
@@ -53,6 +64,31 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is healthy' });
+});
+
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+// configure Multer to save files to /uploads
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) =>
+    cb(null, Date.now() + "-" + file.originalname),
+});
+
+const upload = multer({ storage });
+app.post("/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    // store file path in Postgres
+    const fileUrl = `/uploads/${req.file.filename}`;
+
+    res.json({ fileUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "File upload failed" });
+  }
 });
 
 module.exports = app;

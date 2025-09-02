@@ -1,6 +1,41 @@
 const { prisma } = require('../lib/prisma');
 
-// Create a new course (instructor only)
+const apiKey = " AIzaSyBS5OACi5JlNTgdLAYNFILd3T8IcYysJOA"; // replace with your real API key
+
+const translateText = async (req, res) => {
+  try {
+    const { q, source, target } = req.body;
+
+    if (!q || !source || !target) {
+      return res.status(400).json({ error: "Missing required fields: q, source, target" });
+    }
+
+    // Build REST API URL manually
+    const url = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        q,
+        source,
+        target,
+        format: "text",
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(JSON.stringify(data.error));
+    }
+
+    res.json({ translatedText: data.data.translations[0].translatedText });
+  } catch (error) {
+    console.error("Translation error:", error);
+    res.status(500).json({ error: "Translation service failed" });
+  }
+};
 const createCourse = async (req, res) => {
   try {
     const { title,description, language,
@@ -234,37 +269,7 @@ const getForumMessagesByCourseId = async (req, res) => {
     res.status(500).json({ error: "Error fetching forum messages" });
   }
 };
-const translateText = async (req, res) => {
-  try {
-    const response = await fetch('https://libretranslate.de/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body),
-    });
 
-    const rawText = await response.text();
-    console.log("Raw response from LibreTranslate:", rawText);
-
-    if (!response.ok) {
-      throw new Error(`Translation API error: ${response.status} - ${rawText}`);
-    }
-
-    // Try to parse response safely
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch (jsonError) {
-      console.error("Failed to parse JSON from translation API:", jsonError);
-      return res.status(500).json({ error: "Invalid JSON response from translation API" });
-    }
-
-    // Send back to client
-    res.json(data);
-  } catch (error) {
-    console.error("Translation error:", error);
-    res.status(500).json({ error: "Translation service failed" });
-  }
-};
 const getCourseReviews = async (req, res) => {
   try {
     const { courseId } = req.params;

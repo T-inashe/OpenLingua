@@ -227,9 +227,6 @@ useEffect(()=>{
           q: input,
           source: sourceLang,
           target: targetLang,
-          format: "text",
-          alternatives: 3,
-		      api_key: ""
         })
       });
 
