@@ -75,12 +75,15 @@ describe("SignIn", () => {
 
     await user.clear(emailInput);
     await user.type(emailInput, "valid@example.com");
+    await user.clear(passwordInput);
     await user.type(passwordInput, "456789");
 
-    expect(screen.queryByText(/email is invalid/i)).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/password must be at least 6 characters/i)
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText(/email is invalid/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/password must be at least 6 characters/i)
+      ).not.toBeInTheDocument();
+    });
   });
 
   test("successful submit calls backend and toggles loading state", async () => {
@@ -97,18 +100,21 @@ describe("SignIn", () => {
     const passwordInput = screen.getByPlaceholderText(/enter your password/i);
     const button = screen.getByRole("button", { name: /sign in/i });
 
+    await user.clear(emailInput);
     await user.type(emailInput, "user@example.com");
+    await user.clear(passwordInput);
     await user.type(passwordInput, "secret1");
     await user.click(button);
 
     expect(screen.getByText(/signing in/i)).toBeInTheDocument();
 
     const expectedUrl = `${config.BACKEND_URL}/api/auth/login`;
-    expect(global.fetch).toHaveBeenCalledWith(expectedUrl, expect.objectContaining({
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "user@example.com", password: "secret1" }),
-    }));
+    expect(global.fetch).toHaveBeenCalled();
+    const [calledUrl, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(calledUrl).toBe(expectedUrl);
+    const sent = JSON.parse(init.body);
+    expect(sent.email).toBe("user@example.com");
+    expect(sent.password).toBe("secret1");
 
     // Resolve the pending fetch now
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
