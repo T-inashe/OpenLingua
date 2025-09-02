@@ -153,7 +153,7 @@ const LandingPage = () => {
                         className={`group relative bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 transition-all duration-500 hover:scale-105 hover:-translate-y-2 hover:shadow-purple-500/10 ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'}`}>
                         <div className={`absolute inset-0 bg-gradient-to-r ${languageCourse.color} opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity duration-500`}></div>
                         <div className="relative z-10 text-center">
-                        <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">
+                        <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300 emoji-flag">
                             {languageCourse.icon}
                         </div>
                         <div className="text-2xl font-bold text-white mb-4 group-hover:text-cyan-300 transition-colors duration-300">

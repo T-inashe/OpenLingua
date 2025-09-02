@@ -11,18 +11,118 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  password    String?  // Optional for OAuth users
-  name        String   // Single name field
-  avatar      String?
-  
+  id            String             @id @default(cuid())
+  email         String             @unique
+  password      String?
+  name          String
+  avatar        String?
+  joinedCourses CourseEnrollment[]
+  forumPosts    ForumPost[]
   // OAuth fields
-  googleId    String? @unique
-  microsoftId String? @unique
-  
+  googleId      String?            @unique
+  microsoftId   String?            @unique
+
+  // ✅ Add this line:
+  coursesTaught Course[] @relation("CourseInstructor")
+  courseReviews   CourseReview[]
+  reviewReplies   ReviewReply[]      // ✅ Replies written by user
+  helpfulVotes    ReviewHelpfulVote[] 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("users")
+}
+
+model Course {
+  id          String @id @default(cuid())
+  title       String
+  language    String
+  description String
+  level       String
+  category    String
+  hours       String
+  public      String
+  community   String
+  discussions String
+  info        String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // ✅ Add the relation name here:
+  instructor   User   @relation("CourseInstructor", fields: [instructorId], references: [id])
+  instructorId String
+
+  words       Word[]
+  enrollments CourseEnrollment[]
+  forumPosts  ForumPost[]
+  courseReviews  CourseReview[] 
+}
+
+model CourseEnrollment {
+  id       String @id @default(cuid())
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+  progress String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Word {
+  id       String @id @default(cuid())
+  title    String
+  type     String
+  duration String
+  content  String
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  content   String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model CourseReview {
+  id        String   @id @default(cuid())
+  rating    Int
+  review    String?
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  String
+  replies   ReviewReply[]         // ✅ Replies to the review
+  helpfulVotes ReviewHelpfulVote[] // ✅ Users who marked the review as helpful
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+}
+
+model ReviewReply {
+  id         String   @id @default(cuid())
+  content    String
+  author     User     @relation(fields: [authorId], references: [id])
+  authorId   String
+  review     CourseReview @relation(fields: [reviewId], references: [id])
+  reviewId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ReviewHelpfulVote {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  review    CourseReview @relation(fields: [reviewId], references: [id])
+  reviewId  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, reviewId]) // Prevent duplicate helpful votes by same user
 }
