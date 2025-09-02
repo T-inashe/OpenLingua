@@ -1,7 +1,8 @@
-const { env } = require('process');
+
 const { prisma } = require('../lib/prisma');
 
-const apiKey = env("API_KEY"); // replace with your real API key
+const apiKey = process.env.API_KEY
+
 
 const translateText = async (req, res) => {
   try {
