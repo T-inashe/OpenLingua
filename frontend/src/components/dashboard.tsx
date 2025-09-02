@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, Plus, BookOpen, TrendingUp, Users, Star, Clock, Award, Settings, Bell } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import config from "../config";
+
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -10,215 +11,204 @@ const Dashboard = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [mycourses, setMycourses] = useState<Courses[]>([]);
-const [coursess, setCoursess] = useState<Courses[]>([]);
-const [joined, setJoined] = useState<Joined[]>([]);
-const [joinedall, setJoinedall] = useState<Joined[]>([]);
-const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
+  const [coursess, setCoursess] = useState<Courses[]>([]);
+  const [joined, setJoined] = useState<Joined[]>([]);
+  const [joinedall, setJoinedall] = useState<Joined[]>([]);
+  const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
+
+  const navigate = useNavigate();
 
   interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  // Add other fields if needed (like avatar, googleId, etc.)
-}
-interface Courses {
-  id: string;
-  title: string;
-  createdAt: string;
-  description: string;
-  level: string;
-  // Add other fields if needed (like avatar, googleId, etc.)
-}
-interface Joined {
-  id: string;
-  progress: string;
-  // Add other fields if needed (like avatar, googleId, etc.)
-}
-const getUser = async () => {
-//  setLod('yes')
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
-    });
-//alert(res.json())
-    if (!res.ok) {
-      throw new Error("Failed to fetch courses");
-    }
-
-    const data = await res.json();
-
-  setUser(data.user);  // Use the courses array
-setInit(getInitials(data.user.name))
-getMyCourses(data.user)
-getJoinedCourses(data.user)
-   // setLod('no')
-    // fetchCourses(); // Uncomment if needed to refresh separately
-  } catch (error) {
-    console.error("Error fetching courses:", error);
+    id: string;
+    name: string;
+    email: string;
+    avatar: string;
+    // Add other fields if needed (like avatar, googleId, etc.)
   }
-};
-useEffect(()=>{
-getUser()
-},[])
-
- const getMyCourses = async (user: User) => {
-  // Basic validation
-
-
-  // Transform your state into the format expected by your backend
-  const payload = {
-    userId: user?.id,
-
-  };
- 
-
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/courses/getcourses/${user?.id}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-     
-    });
-
-    if (!res.ok) {
-      console.log(res.json())
-      throw new Error("Failed to fetch my courses");
-    }
-
-    const data = await res.json();
-   // alert(JSON.stringify(data))
-if (Array.isArray(data.courses)) {
-  setMycourses(data.courses);  // Use the courses array
-} else {
-  console.error("Expected an array but got:", data);
-  //setMycourses([]); // fallback to empty array to avoid crashes
-} 
-  } catch (error) {
-    console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+  interface Courses {
+    id: string;
+    title: string;
+    createdAt: string;
+    description: string;
+    level: string;
+    // Add other fields if needed (like avatar, googleId, etc.)
   }
-};
-
-
-
-const getCourses = async () => {
-  // Basic validation
-
-
-  // Transform your state into the format expected by your backend
- 
- 
-
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/courses/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch courses");
-    }
-
-    const data = await res.json();
-   // alert(JSON.stringify(data))
-if (Array.isArray(data.courses)) {
-  setCoursess(data.courses);  // Use the courses array
-} else {
-  console.error("Expected an array but got:", data);
-  //setMycourses([]); // fallback to empty array to avoid crashes
-} 
-  } catch (error) {
-    console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+  interface Joined {
+    id: string;
+    progress: string;
+    // Add other fields if needed (like avatar, googleId, etc.)
   }
-};
 
-useEffect(()=>{
- getCourses()
-},[])
-
-
-const getJoinedCourses = async (user: User) => {
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/courses/getjoinedcourses/${user.id}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch courses");
-    }
-
-    const data = await res.json();
-
-    if (Array.isArray(data.courses)) {
-      setJoined(data.courses);
-
-      if (data.courses.length === 0) {
-        setProgress("0%");
-      } else {
-        const courses: Joined[] = data.courses;
-        const total = courses.reduce<number>((sum, course) => {
-          const num = parseFloat(course.progress || "0"); // Handle undefined/null
-          return sum + (isNaN(num) ? 0 : num);
-        }, 0);
-
-        const average = total / data.courses.length; // ✅ Use data.courses directly
-        setProgress(`${average.toFixed(2)}%`);
+  const getUser = async () => {
+    //  setLod('yes')
+    try {
+      const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+      });
+      //alert(res.json())
+      if (!res.ok) {
+        throw new Error("Failed to fetch courses");
       }
-    } else {
-      console.error("Expected an array but got:", data);
+
+      const data = await res.json();
+
+      setUser(data.user);  // Use the courses array
+      setInit(getInitials(data.user.name))
+      getMyCourses(data.user)
+      getJoinedCourses(data.user)
+      // setLod('no')
+      // fetchCourses(); // Uncomment if needed to refresh separately
+    } catch (error) {
+      console.error("Error fetching courses:", error);
     }
-  } catch (error) {
-    console.error("Error fetching joined courses:", error);
-    alert("Something went wrong while fetching the joined courses.");
-  }
-};
-
-            const navigate = useNavigate()
-const JoinCourse = async (course: Courses) => {
-  // Basic validation
-
-
-  // Transform your state into the format expected by your backend
-  const payload = {
-    userId: user?.id,
-    courseId: course.id,
-
   };
- 
+  useEffect(() => {
+    getUser()
+  }, [])
 
-  try {
-    const response = await fetch(`${config.BACKEND_URL}/api/courses/${course.id}/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
-      body: JSON.stringify(payload)
-    });
+  const getMyCourses = async (user: User) => {
+    // Basic validation
 
-    if (response.ok) {
-     alert("Course joined successfully!");
-     navigate(`/course/${course.id}`)
-    } else {
-      const errorData = await response.json();
-      console.error("Failed to join course:", errorData);
-      alert("Failed to join course.");
+    // Transform your state into the format expected by your backend
+    const payload = {
+      userId: user?.id,
+    };
+
+    try {
+      const res = await fetch(`${config.BACKEND_URL}/api/courses/getcourses/${user?.id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        console.log(res.json())
+        throw new Error("Failed to fetch my courses");
+      }
+
+      const data = await res.json();
+      // alert(JSON.stringify(data))
+      if (Array.isArray(data.courses)) {
+        setMycourses(data.courses);  // Use the courses array
+      } else {
+        console.error("Expected an array but got:", data);
+        //setMycourses([]); // fallback to empty array to avoid crashes
+      }
+    } catch (error) {
+      console.error("Error creating course:", error);
+      alert("Something went wrong while creating the course.");
     }
-  } catch (error) {
-    console.error("Error joining course:", error);
-    alert("Something went wrong while joining the course.");
-  }
-};
+  };
 
-function getInitials(name: string): string {
-  if (!name) return '';
-  const words = name.trim().split(' ');
-  if (words.length === 1) return words[0].charAt(0).toUpperCase();
-  return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
-}
+  const getCourses = async () => {
+    // Basic validation
+
+    // Transform your state into the format expected by your backend
+
+    try {
+      const res = await fetch(`${config.BACKEND_URL}/api/courses/`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch courses");
+      }
+
+      const data = await res.json();
+      // alert(JSON.stringify(data))
+      if (Array.isArray(data.courses)) {
+        setCoursess(data.courses);  // Use the courses array
+      } else {
+        console.error("Expected an array but got:", data);
+        //setMycourses([]); // fallback to empty array to avoid crashes
+      }
+    } catch (error) {
+      console.error("Error creating course:", error);
+      alert("Something went wrong while creating the course.");
+    }
+  };
+
+  useEffect(() => {
+    getCourses()
+  }, [])
+
+  const getJoinedCourses = async (user: User) => {
+    try {
+      const res = await fetch(`${config.BACKEND_URL}/api/courses/getjoinedcourses/${user.id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch courses");
+      }
+
+      const data = await res.json();
+
+      if (Array.isArray(data.courses)) {
+        setJoined(data.courses);
+
+        if (data.courses.length === 0) {
+          setProgress("0%");
+        } else {
+          const courses: Joined[] = data.courses;
+          const total = courses.reduce<number>((sum, course) => {
+            const num = parseFloat(course.progress || "0"); // Handle undefined/null
+            return sum + (isNaN(num) ? 0 : num);
+          }, 0);
+
+          const average = total / data.courses.length; // ✅ Use data.courses directly
+          setProgress(`${average.toFixed(2)}%`);
+        }
+      } else {
+        console.error("Expected an array but got:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching joined courses:", error);
+      alert("Something went wrong while fetching the joined courses.");
+    }
+  };
+
+  const JoinCourse = async (course: Courses) => {
+    // Basic validation
+
+    // Transform your state into the format expected by your backend
+    const payload = {
+      userId: user?.id,
+      courseId: course.id,
+    };
+
+    try {
+      const response = await fetch(`${config.BACKEND_URL}/api/courses/${course.id}/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        alert("Course joined successfully!");
+        navigate(`/course/${course.id}`)
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to join course:", errorData);
+        alert("Failed to join course.");
+      }
+    } catch (error) {
+      console.error("Error joining course:", error);
+      alert("Something went wrong while joining the course.");
+    }
+  };
+
+  function getInitials(name: string): string {
+    if (!name) return '';
+    const words = name.trim().split(' ');
+    if (words.length === 1) return words[0].charAt(0).toUpperCase();
+    return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+  }
+
   useEffect(() => {
     setIsVisible(true);
   }, []);
@@ -316,6 +306,14 @@ function getInitials(name: string): string {
     }
   };
 
+  const handleSidebarItemClick = (itemId: string) => {
+    if (itemId === 'community') {
+      navigate('/community');
+    } else {
+      setActiveTab(itemId);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
       {/* Header */}
@@ -364,7 +362,7 @@ function getInitials(name: string): string {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => handleSidebarItemClick(item.id)}
                     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200 hover:bg-white/5 ${
                       activeTab === item.id 
                         ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-white border border-cyan-500/30' 
@@ -378,6 +376,7 @@ function getInitials(name: string): string {
                 );
               })}
             </nav>
+
 
             {/* Quick Actions */}
             <div className="mt-8 p-4 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-lg border border-cyan-500/20">

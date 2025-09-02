@@ -7,6 +7,7 @@ import SignUp from './components/signUp';
 import CourseDashboard from './components/courseDashboard';
 import Dashboard from './components/dashboard';
 import CourseCreation from './components/courseCreation';
+import CommunityDashboard from './components/communityDashboard';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         {/* <Route path="/" element={<LandingPage />} /> */}
         <Route path="/signIn" element={<SignIn />} />
         <Route path="/signUp" element={<SignUp />}/>
+        <Route path="/community" element={<CommunityDashboard />}/>
         <Route path="/create/:id" element={<CourseCreation/>} />
         <Route path="/course/:id/:uid" element={<CourseDashboard />} />
         <Route path="/dashboard" element={<Dashboard/>} />
