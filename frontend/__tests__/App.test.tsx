@@ -8,7 +8,6 @@ import "@testing-library/jest-dom";
 
 test("renders without crashing", () => {
   render(<App />);
-
   expect(
   screen.getByRole("heading", { name: /Diversity is Now/i })
 ).toBeInTheDocument();

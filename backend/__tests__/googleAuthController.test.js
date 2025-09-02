@@ -85,6 +85,7 @@ describe('googleAuthController', () => {
       const mockAuthenticate = jest.fn((strategy, options, cb) => (req, res, next) => {
         cb(null, user, null);
       });
+      
       passport.authenticate.mockImplementation(mockAuthenticate);
 
       process.env.FRONTEND_URL = 'http://localhost:3000';

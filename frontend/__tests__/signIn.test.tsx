@@ -25,7 +25,6 @@ describe("SignIn", () => {
 
   test("renders form elements", () => {
     renderWithRouter();
-
     expect(
       screen.getByRole("heading", { name: /welcome back/i })
     ).toBeInTheDocument();
@@ -37,7 +36,6 @@ describe("SignIn", () => {
   test("shows required errors when submitting empty form", async () => {
     renderWithRouter();
     const user = userEvent.setup();
-
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     expect(screen.getByText(/email is required/i)).toBeInTheDocument();

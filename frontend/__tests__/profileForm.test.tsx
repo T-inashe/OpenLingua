@@ -12,7 +12,6 @@ describe("ProfileForm", () => {
   const setup = (overrides?: Partial<React.ComponentProps<typeof ProfileForm>>) => {
     const onProfileComplete = jest.fn().mockResolvedValue(undefined);
     const userEmail = "user@example.com";
-
     render(
       <ProfileForm
         onProfileComplete={onProfileComplete}
@@ -23,13 +22,11 @@ describe("ProfileForm", () => {
 
     const nameInput = screen.getByLabelText(/your name/i) as HTMLInputElement;
     const submitButton = screen.getByRole("button");
-
     return { onProfileComplete, userEmail, nameInput, submitButton };
   };
 
   test("renders header, email, input and submit button", () => {
     const { userEmail } = setup();
-
     expect(
       screen.getByRole("heading", { name: /complete your profile/i })
     ).toBeInTheDocument();

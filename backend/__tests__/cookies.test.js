@@ -36,6 +36,7 @@ describe('cookies utils', () => {
 
   it('clearAuthCookies clears access and refresh cookies with correct options', () => {
     clearAuthCookies(res);
+    
     expect(res.clearCookie).toHaveBeenCalledWith(
       'accessToken',
       expect.objectContaining({

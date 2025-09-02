@@ -118,6 +118,7 @@ describe('authController', () => {
       const res = mockRes();
       await login(req, res);
       expect(res.status).toHaveBeenCalledWith(401);
+      
     });
 
     it('should return 401 if password invalid', async () => {
