@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, BookOpen, TrendingUp, Users, Star, Clock, Award, Settings, Bell } from "lucide-react";
+import { Search, Plus, BookOpen, TrendingUp, Users, Star, Award, Settings, Bell } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import config from "../config";
 
@@ -13,8 +13,8 @@ const Dashboard = () => {
   const [mycourses, setMycourses] = useState<Courses[]>([]);
   const [coursess, setCoursess] = useState<Courses[]>([]);
   const [joined, setJoined] = useState<Joined[]>([]);
-  const [joinedall, setJoinedall] = useState<Joined[]>([]);
-  const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
+  // const [joinedall, setJoinedall] = useState<Joined[]>([]);
+  // const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
 
   const navigate = useNavigate();
 
@@ -72,9 +72,9 @@ const Dashboard = () => {
     // Basic validation
 
     // Transform your state into the format expected by your backend
-    const payload = {
-      userId: user?.id,
-    };
+    // const payload = {
+    //   userId: user?.id,
+    // };
 
     try {
       const res = await fetch(`${config.BACKEND_URL}/api/courses/getcourses/${user?.id}`, {
@@ -214,74 +214,74 @@ const Dashboard = () => {
   }, []);
 
   // Sample data
-  const userStats = {
-    coursesEnrolled: 8,
-    coursesCreated: 3,
-    totalProgress: 64,
-    currentStreak: 12
-  };
+  // const userStats = {
+  //   coursesEnrolled: 8,
+  //   coursesCreated: 3,
+  //   totalProgress: 64,
+  //   currentStreak: 12
+  // };
 
-  const courses = [
-    {
-      id: 1,
-      title: "Advanced isiXhosa Grammar",
-      description: "Master complex grammatical structures and cultural nuances",
-      language: "isiXhosa",
-      progress: 78,
-      students: 245,
-      rating: 4.8,
-      category: "Grammar",
-      isCreated: true,
-      lastActivity: "2 hours ago",
-      difficulty: "Advanced"
-    },
-    {
-      id: 2,
-      title: "Swahili for Business",
-      description: "Professional communication in East African markets",
-      language: "Swahili",
-      progress: 45,
-      students: 189,
-      rating: 4.6,
-      category: "Business",
-      isCreated: false,
-      lastActivity: "Yesterday",
-      difficulty: "Intermediate"
-    },
-    {
-      id: 3,
-      title: "Shona Poetry & Literature",
-      description: "Explore the rich literary tradition through classic works",
-      language: "Shona",
-      progress: 92,
-      students: 156,
-      rating: 4.9,
-      category: "Literature",
-      isCreated: true,
-      lastActivity: "3 days ago",
-      difficulty: "Advanced"
-    },
-    {
-      id: 4,
-      title: "Beginner Xitsonga Conversations",
-      description: "Essential phrases for everyday communication",
-      language: "Xitsonga",
-      progress: 23,
-      students: 78,
-      rating: 4.5,
-      category: "Conversation",
-      isCreated: false,
-      lastActivity: "1 week ago",
-      difficulty: "Beginner"
-    }
-  ];
+  // const courses = [
+  //   {
+  //     id: 1,
+  //     title: "Advanced isiXhosa Grammar",
+  //     description: "Master complex grammatical structures and cultural nuances",
+  //     language: "isiXhosa",
+  //     progress: 78,
+  //     students: 245,
+  //     rating: 4.8,
+  //     category: "Grammar",
+  //     isCreated: true,
+  //     lastActivity: "2 hours ago",
+  //     difficulty: "Advanced"
+  //   },
+  //   {
+  //     id: 2,
+  //     title: "Swahili for Business",
+  //     description: "Professional communication in East African markets",
+  //     language: "Swahili",
+  //     progress: 45,
+  //     students: 189,
+  //     rating: 4.6,
+  //     category: "Business",
+  //     isCreated: false,
+  //     lastActivity: "Yesterday",
+  //     difficulty: "Intermediate"
+  //   },
+  //   {
+  //     id: 3,
+  //     title: "Shona Poetry & Literature",
+  //     description: "Explore the rich literary tradition through classic works",
+  //     language: "Shona",
+  //     progress: 92,
+  //     students: 156,
+  //     rating: 4.9,
+  //     category: "Literature",
+  //     isCreated: true,
+  //     lastActivity: "3 days ago",
+  //     difficulty: "Advanced"
+  //   },
+  //   {
+  //     id: 4,
+  //     title: "Beginner Xitsonga Conversations",
+  //     description: "Essential phrases for everyday communication",
+  //     language: "Xitsonga",
+  //     progress: 23,
+  //     students: 78,
+  //     rating: 4.5,
+  //     category: "Conversation",
+  //     isCreated: false,
+  //     lastActivity: "1 week ago",
+  //     difficulty: "Beginner"
+  //   }
+  // ];
 
-  const recentActivity = [
-    { action: "Completed lesson", course: "Advanced isiXhosa Grammar", time: "2 hours ago" },
-    { action: "Course published", course: "Shona Poetry & Literature", time: "1 day ago" },
-    { action: "New student enrolled", course: "Advanced isiXhosa Grammar", time: "2 days ago" },
-    { action: "Quiz completed", course: "Swahili for Business", time: "3 days ago" }
-  ];
+  // const recentActivity = [
+  //   { action: "Completed lesson", course: "Advanced isiXhosa Grammar", time: "2 hours ago" },
+  //   { action: "Course published", course: "Shona Poetry & Literature", time: "1 day ago" },
+  //   { action: "New student enrolled", course: "Advanced isiXhosa Grammar", time: "2 days ago" },
+  //   { action: "Quiz completed", course: "Swahili for Business", time: "3 days ago" }
+  // ];
 
   const sidebarItems = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
@@ -291,11 +291,11 @@ const Dashboard = () => {
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
-  const filteredCourses = courses.filter(course =>
-    course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // const filteredCourses = courses.filter(course =>
+  //   course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //   course.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //   course.category.toLowerCase().includes(searchQuery.toLowerCase())
+  // );
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
