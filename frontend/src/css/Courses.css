@@ -1,0 +1,55 @@
+/* CoursesPage.css */
+.courses-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 2rem;
+  font-family: "Inter", sans-serif;
+}
+
+.section {
+  background: #f9f9fc;
+  border: 1px solid #e0d7f7;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.section h2 {
+  color: #5b21b6; /* Purple accent */
+  margin-bottom: 1rem;
+}
+
+.course-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  border: 1px solid #ddd;
+  transition: box-shadow 0.2s ease;
+}
+
+.course-card:hover {
+  box-shadow: 0 4px 10px rgba(91, 33, 182, 0.2);
+}
+
+.course-card button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.course-card .join-btn {
+  background-color: #5b21b6;
+  color: white;
+}
+
+.course-card .leave-btn {
+  background-color: #3d019e;
+  color: white;
+}

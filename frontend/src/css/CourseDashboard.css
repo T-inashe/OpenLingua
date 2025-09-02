@@ -1,0 +1,76 @@
+/* CourseDetails.css */
+.course-details {
+  padding: 2rem;
+  font-family: "Inter", sans-serif;
+}
+
+.course-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.course-header h1 {
+  color: #5b21b6;
+  font-size: 2rem;
+}
+
+.translations, .library, .forum {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f9f9fc;
+  border-radius: 12px;
+  border: 1px solid #e0d7f7;
+}
+
+.translations h2,
+.library h2,
+.forum h2 {
+  color: #5b21b6;
+  margin-bottom: 1rem;
+}
+
+.translation-pair {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: white;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.forum-messages {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding-right: 0.5rem;
+}
+
+.message {
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  border: 1px solid #ddd;
+}
+
+.forum form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.forum input {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.forum button {
+  background: #5b21b6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
