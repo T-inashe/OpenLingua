@@ -1,11 +1,10 @@
 ## User Report: Lebo
 
-Lebo found the platform easy to navigate, with lessons that built logically from basics to applied conversation. The mini-quizzes after each segment prevented passive watching and encouraged recall. The mobile experience was surprisingly polished, with offline caching working on a commute.
+Lebo found the platform easy to navigate, with lessons that built logically from basics to applied conversation. The mobile experience was surprisingly polished, with offline caching working on a commute. The logging out after 2 minutes gets irritated.
 
 Highlights:
 - Clean UI and low cognitive load per screen
-- Immediate hints when stuck reduced frustration
-- Cultural notes added context to phrases
+- Alerts give you a hint to what is happening around
 
 Room for improvement:
 - Dark mode syntax colors could use higher contrast

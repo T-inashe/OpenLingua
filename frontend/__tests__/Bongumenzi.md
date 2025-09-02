@@ -1,10 +1,9 @@
 ## User Report: Bongumenzi
 
-Bongumenzi enjoyed the challenge mode that mixes listening, reading, and timed responses. The platform surfaced personal weak spots after a few sessions and adapted quickly. The built‑in dictionary with example sentences reduced context switching.
+The platform surfaced personal weak spots after a few sessions and adapted quickly. The built‑in translations with example sentences reduced context switching.Error with logins
 
 Highlights:
 - Adaptive practice quickly focused on needs
-- Fast load times and minimal friction between tasks
 - Helpful examples tied to everyday situations
 
 Room for improvement:

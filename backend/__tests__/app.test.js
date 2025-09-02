@@ -1,3 +1,4 @@
+require('./app.mocks');
 const request = require('supertest');
 const app = require('../src/app');
 

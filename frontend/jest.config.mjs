@@ -9,6 +9,10 @@ export default {
   transform: {
     ...tsJestTransformCfg,
   },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  moduleNameMapper: {
+    '\\.(css|less|scss|sass)$': '<rootDir>/styleMock.js',
+  },
   globals: {
     "ts-jest": {
       tsconfig: "tsconfig.jest.json", // use the test-specific tsconfig

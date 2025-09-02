@@ -179,7 +179,7 @@ const CourseCreation = () => {
     try {
       const res = await axios.post(`${config.BACKEND_URL}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (event) => {
+        onUploadProgress: (event: any) => {
           if (event.total) {
             const percent = Math.round((event.loaded * 100) / event.total);
             setProgress(percent);
