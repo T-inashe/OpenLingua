@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import config from "../config";
 import { 
-  Save, 
-  Eye, 
   Plus, 
   Trash2, 
   Upload, 
-  Play, 
-  Mic, 
+  Play,  
   Image, 
   FileText, 
   Settings,
@@ -15,13 +12,12 @@ import {
   ChevronRight,
   GripVertical,
   BookOpen,
-  Users,
   Clock,
   Target,
   Globe,
   ArrowLeft
 } from "lucide-react";
-import { Router, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 interface Lesson {
   id: number;
@@ -87,13 +83,7 @@ const CourseCreation = () => {
     { id: 4, title: "Settings", icon: Settings }
   ];
 
-  const lessonTypes = [
-    { type: "text", label: "Text Lesson", icon: FileText, color: "from-blue-500 to-cyan-500" },
-    { type: "quiz", label: "Quiz", icon: Target, color: "from-green-500 to-emerald-500" },
-    { type: "audio", label: "Audio Lesson", icon: Mic, color: "from-purple-500 to-pink-500" },
-    { type: "video", label: "Video Lesson", icon: Play, color: "from-orange-500 to-red-500" },
-    { type: "interactive", label: "Interactive", icon: Users, color: "from-cyan-500 to-purple-500" }
-  ];
+
 
   const addUnit = () => {
     const newUnit: Unit = {
@@ -134,9 +124,7 @@ const CourseCreation = () => {
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, lessonType: string) => {
-    e.dataTransfer.setData("text/plain", lessonType);
-  };
+
 
   const handleDrop = (e: React.DragEvent, unitId: number) => {
     e.preventDefault();
@@ -200,7 +188,7 @@ const CourseCreation = () => {
     return;
   }
 // upload files first
- const updatedUnits = await Promise.all(
+  await Promise.all(
   units.map(async (unit) => {
     await Promise.all(
       unit.lessons.map(async (lesson) => {

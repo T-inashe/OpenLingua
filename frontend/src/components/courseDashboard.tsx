@@ -4,7 +4,7 @@ import config from "../config";
 
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Heart,Calendar } from "lucide-react";
+import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star,Calendar } from "lucide-react";
 
  type Lesson = {
   title: string;
@@ -61,7 +61,7 @@ const [course, setCourse] = useState<Course | null>(null);
 const [forums, setForums] = useState<Forum[]>([]);
 //const [lessons, setLessons] = useState<Lesson | null>(null);
   // Example lessons for Zulu course
-  const [lessons, setLessons] = useState<Lesson[]>([
+  const [, setLessons] = useState<Lesson[]>([
     { title: "Lesson 1: Greetings", content: "Learn how to greet in Zulu (Sawubona, Unjani)", done: false },
     { title: "Lesson 2: Gratitude", content: "Express thanks (Ngiyabonga)", done: false },
     { title: "Lesson 3: Basic Responses", content: "Yes (Yebo), No (Cha)", done: false },
@@ -69,7 +69,7 @@ const [forums, setForums] = useState<Forum[]>([]);
 
   const [input, setInput] = useState("");
   const [translation, setTranslation] = useState("");
-  const [forum, setForum] = useState<string[]>([]);
+  // const [forum, setForum] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -106,9 +106,9 @@ function getRelativeTime(dateString: string): string {
   return "just now";
 }
 const [newReview, setNewReview] = useState({ name: "", text: "", rating: 5 });
-  const [reviewText, setReviewText] = useState("");
-  const [reviewName, setReviewName] = useState("");
-  const [reviewRating, setReviewRating] = useState(5);
+  // const [reviewText, setReviewText] = useState("");
+  // const [reviewName, setReviewName] = useState("");
+  // const [reviewRating, setReviewRating] = useState(5);
 const [sidebarOpen, setSidebarOpen] = useState(false);
 const [events, setEvents] = useState<Event[]>([
 { title: "Zulu Live Q&A", description: "Ask your questions live.", datetime: "2025-09-05 18:00", attendingCount: 10, attending: false },
@@ -308,9 +308,9 @@ useEffect(()=>{
    }
  };
 
-  const markAsDone = (index: number) => {
-    setLessons(prev => prev.map((lesson, i) => i === index ? { ...lesson, done: true } : lesson));
-  };
+  // const markAsDone = (index: number) => {
+  //   setLessons(prev => prev.map((lesson, i) => i === index ? { ...lesson, done: true } : lesson));
+  // };
 
 
 
