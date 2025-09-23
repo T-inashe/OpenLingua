@@ -27,6 +27,7 @@ model User {
   courseReviews   CourseReview[]
   reviewReplies   ReviewReply[]      // ✅ Replies written by user
   helpfulVotes    ReviewHelpfulVote[] 
+  quizResults     QuizResult[]       // ✅ Quiz results for student
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -55,6 +56,7 @@ model Course {
   enrollments CourseEnrollment[]
   forumPosts  ForumPost[]
   courseReviews  CourseReview[] 
+  quizzes        CourseQuiz[]       // ✅ Quiz references for course
 }
 
 model CourseEnrollment {
@@ -125,4 +127,45 @@ model ReviewHelpfulVote {
   createdAt DateTime @default(now())
 
   @@unique([userId, reviewId]) // Prevent duplicate helpful votes by same user
+}
+
+model CourseQuiz {
+  id               String @id @default(cuid())
+  course           Course @relation(fields: [courseId], references: [id])
+  courseId         String
+  externalQuizId   String  // Reference to external Quiz API
+  title            String
+  description      String?
+  category         String
+  difficulty       String
+  isActive         Boolean @default(true)
+  isCached         Boolean @default(false)
+  cachedData       Json?   // Offline quiz questions/settings
+  sharedByUserId   String? // Original creator for templates
+  isTemplate       Boolean @default(false)
+  tags             String[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  results          QuizResult[]
+  
+  @@unique([courseId, externalQuizId])
+  @@map("course_quizzes")
+}
+
+model QuizResult {
+  id                String @id @default(cuid())
+  quiz              CourseQuiz @relation(fields: [quizId], references: [id])
+  quizId            String
+  student           User @relation(fields: [studentId], references: [id])
+  studentId         String
+  externalSessionId String? // External API session reference
+  score             Float
+  totalQuestions    Int
+  timeSpent         Int     // in seconds
+  answers           Json    // student answers for review
+  completedAt       DateTime @default(now())
+  
+  @@unique([quizId, studentId]) // One result per student per quiz
+  @@map("quiz_results")
 }
