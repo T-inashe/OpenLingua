@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, Plus, BookOpen, TrendingUp, Users, Star, Award, Settings, Bell, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import config from "../config";
 import LoaderOverlay from "./Loader";
 import { logoutRequest } from "../utils/logout";
 import ThemeToggle from "./ThemeToggle";
+import { useProAlert } from "../context/ProAlertContext";
+import { handleUnauthorized } from "../utils/handleUnauthorized";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState('');
   const [init, setInit] = useState('');
   const [progress, setProgress] = useState('');
   const [isVisible, setIsVisible] = useState(false);
@@ -21,6 +24,7 @@ const Dashboard = () => {
   // const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
 
   const navigate = useNavigate();
+  const proAlert = useProAlert();
 
   interface User {
     id: string;
@@ -50,6 +54,10 @@ const Dashboard = () => {
         headers: { "Content-Type": "application/json" },
         credentials: 'include',
       });
+
+      if (handleUnauthorized(res, navigate, proAlert)) {
+        return;
+      }
 
       if (!res.ok) {
         throw new Error("Failed to fetch current user");
@@ -83,6 +91,10 @@ const Dashboard = () => {
         headers: { "Content-Type": "application/json" },
       });
 
+      if (handleUnauthorized(res, navigate, proAlert)) {
+        return;
+      }
+
       if (!res.ok) {
         console.log(res.json())
         throw new Error("Failed to fetch my courses");
@@ -98,7 +110,7 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error("Error creating course:", error);
-      alert("Something went wrong while creating the course.");
+      proAlert.error("Something went wrong while loading your courses.");
     }
   };
 
@@ -113,6 +125,10 @@ const Dashboard = () => {
         headers: { "Content-Type": "application/json" },
       });
 
+      if (handleUnauthorized(res, navigate, proAlert)) {
+        return;
+      }
+
       if (!res.ok) {
         throw new Error("Failed to fetch courses");
       }
@@ -126,7 +142,7 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching courses:", error);
-      alert("Something went wrong while creating the course.");
+      proAlert.error("Something went wrong while loading courses.");
     }
   };
 
@@ -149,6 +165,10 @@ const Dashboard = () => {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
+
+      if (handleUnauthorized(res, navigate, proAlert)) {
+        return;
+      }
 
       if (!res.ok) {
         throw new Error("Failed to fetch courses");
@@ -176,13 +196,13 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching joined courses:", error);
-      alert("Something went wrong while fetching the joined courses.");
+      proAlert.error("Something went wrong while fetching the joined courses.");
     }
   };
 
   const JoinCourse = async (course: Courses): Promise<boolean> => {
     if (!user) {
-      alert("Please sign in before joining a course.");
+      proAlert.info("Please sign in before joining a course.");
       return false;
     }
 
@@ -192,26 +212,30 @@ const Dashboard = () => {
     };
 
     try {
-      const response = await fetch(`${config.BACKEND_URL}/api/courses/${course.id}/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
+    const response = await fetch(`${config.BACKEND_URL}/api/courses/${course.id}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+      if (handleUnauthorized(response, navigate, proAlert)) {
+        return false;
+      }
 
       if (response.ok) {
-        alert("Course joined successfully!");
+        proAlert.success("Course joined successfully!");
         await getJoinedCourses(user);
         navigate(`/course/${course.id}`);
         return true;
       } else {
         const errorData = await response.json();
         console.error("Failed to join course:", errorData);
-        alert("Failed to join course.");
+        proAlert.error("Failed to join course.");
       }
     } catch (error) {
       console.error("Error joining course:", error);
-      alert("Something went wrong while joining the course.");
+      proAlert.error("Something went wrong while joining the course.");
     }
 
     return false;
@@ -342,9 +366,30 @@ const Dashboard = () => {
       setJoined([]);
       navigate('/signIn');
     } else {
-      alert('Unable to log out. Please try again.');
+      proAlert.error('Unable to log out. Please try again.');
     }
   };
+
+  const filteredCourses = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const normalizedDifficulty = difficultyFilter.trim().toLowerCase();
+
+    return coursess.filter((course) => {
+      const matchesDifficulty = !normalizedDifficulty
+        || (course.level ? course.level.toLowerCase() === normalizedDifficulty : false);
+
+      if (!normalizedSearch) {
+        return matchesDifficulty;
+      }
+
+      const searchableFields = [course.title, course.description, course.level];
+      const matchesSearch = searchableFields.some((field) =>
+        typeof field === 'string' && field.toLowerCase().includes(normalizedSearch)
+      );
+
+      return matchesDifficulty && matchesSearch;
+    });
+  }, [coursess, difficultyFilter, searchQuery]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative">
@@ -508,7 +553,11 @@ const Dashboard = () => {
               <div className="flex space-x-3">
                 
                 
-                <select className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-all duration-200">
+                <select
+                  value={difficultyFilter}
+                  onChange={(e) => setDifficultyFilter(e.target.value)}
+                  className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-all duration-200"
+                >
                   <option value="">All Levels</option>
                   <option value="beginner">Beginner</option>
                   <option value="intermediate">Intermediate</option>
@@ -521,20 +570,23 @@ const Dashboard = () => {
           {/* Course Grid */}
           <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 transition-all duration-1000 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
 
-            {
-            coursess.length>0 ? (coursess.map((course, index) =>  (
-              <CourseCard
-            key={course.id}
-            course={course}
-            index={index}
-            user={user}
-            JoinCourse={JoinCourse}
-            isJoined={joined.some((joinedCourse) => joinedCourse.id === course.id)}
-            getDifficultyColor={getDifficultyColor}
-          />
-            ))):(<p className="text-gray-400 text-xs">No Courses</p>)
-            
-            }
+            {filteredCourses.length > 0 ? (
+              filteredCourses.map((course, index) => (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  index={index}
+                  user={user}
+                  JoinCourse={JoinCourse}
+                  isJoined={joined.some((joinedCourse) => joinedCourse.id === course.id)}
+                  getDifficultyColor={getDifficultyColor}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center text-gray-400 text-sm">
+                {coursess.length === 0 ? 'No courses available yet.' : 'No courses match your filters.'}
+              </div>
+            )}
           </div>
 
           {/* Recent Activity 
@@ -615,6 +667,8 @@ const CourseCard: React.FC<CourseCardProps> = ({
 }) => {
 const [joinedall, setJoinedall] = useState<Joined[]>([]);
 const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
+const proAlert = useProAlert();
+const navigate = useNavigate();
   const getJoinedCoursesUseridCourseid = async (user: User, course: Courses) => {
   try {
     const res = await fetch(`${config.BACKEND_URL}/api/courses/joined/${user.id}/${course.id}`, {
@@ -622,6 +676,10 @@ const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
       headers: { "Content-Type": "application/json" },
       credentials: 'include',
     });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return null;
+    }
 
     if (!res.ok) {
       throw new Error("Failed to fetch courses");
@@ -637,7 +695,7 @@ if (data.joined) {
     
   } catch (error) {
     console.error("Error fetching joined courses:", error);
-    alert("Something went wrong while fetching the joined courses.");
+    proAlert.error("Something went wrong while fetching the joined courses.");
   }
 };
 const getJoinedCoursesCourseid = async (course: Courses) => {
@@ -647,6 +705,10 @@ const getJoinedCoursesCourseid = async (course: Courses) => {
       headers: { "Content-Type": "application/json" },
       credentials: 'include',
     });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
 
     if (!res.ok) {
       throw new Error("Failed to fetch courses");
@@ -667,7 +729,7 @@ const getJoinedCoursesCourseid = async (course: Courses) => {
     
   } catch (error) {
     console.error("Error fetching joined courses:", error);
-    alert("Something went wrong while fetching the joined courses.");
+    proAlert.error("Something went wrong while fetching the joined courses.");
   }
 };
 
@@ -708,7 +770,7 @@ getJoinedCoursesCourseid(course)
 
   const handleJoinClick = async () => {
     if (!user) {
-      alert("Please sign in before joining a course.");
+      proAlert.info("Please sign in before joining a course.");
       return;
     }
 

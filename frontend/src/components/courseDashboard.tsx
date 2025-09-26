@@ -7,6 +7,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar } from "lucide-react";
 import LoaderOverlay from "./Loader";
 import ThemeToggle from "./ThemeToggle";
+import { useProAlert } from "../context/ProAlertContext";
+import { handleUnauthorized } from "../utils/handleUnauthorized";
 
 type Review = {
 user: User;
@@ -78,6 +80,7 @@ export default function CourseDashboard() {
   const [pageLoading, setPageLoading] = useState(true);
 
   const [input, setInput] = useState("");
+  const proAlert = useProAlert();
   const [translation, setTranslation] = useState("");
   // const [forum, setForum] = useState<string[]>([]);
   const [message, setMessage] = useState("");
@@ -104,6 +107,10 @@ const fetchCurrentUser = async () => {
       headers: { "Content-Type": "application/json" },
       credentials: "include"
     });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
 
     if (!res.ok) {
       throw new Error("Failed to fetch current user");
@@ -167,6 +174,10 @@ const getCourses = async () => {
       credentials: 'include',
     });
 
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
+
     if (!res.ok) {
       throw new Error("Failed to fetch courses");
     }
@@ -178,7 +189,7 @@ const getCourses = async () => {
  
   } catch (error) {
     console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+    proAlert.error("Something went wrong while loading the course.");
   }
 };
 const getForum = async () => {
@@ -193,6 +204,10 @@ const getForum = async () => {
       credentials: 'include',
     });
 
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
+
     if (!res.ok) {
       throw new Error("Failed to fetch courses");
     }
@@ -203,7 +218,7 @@ const getForum = async () => {
  
   } catch (error) {
     console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+    proAlert.error("Something went wrong while loading the forum posts.");
   }
 };
 
@@ -219,6 +234,10 @@ const getReview = async () => {
       credentials: 'include',
     });
 
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
+
     if (!res.ok) {
       throw new Error("Failed to fetch courses");
     }
@@ -229,7 +248,7 @@ const getReview = async () => {
  
   } catch (error) {
     console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+    proAlert.error("Something went wrong while loading the course reviews.");
   }
 };
 
@@ -384,16 +403,20 @@ const renderLessonContent = (lesson: CourseLesson) => {
     setLoading(true);
     setTranslation("");
 
-    try {
-      const res = await fetch(`${config.BACKEND_URL}/api/courses/translate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          q: input,
-          source: sourceLang,
-          target: targetLang,
-        })
-      });
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/courses/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        q: input,
+        source: sourceLang,
+        target: targetLang,
+      })
+    });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
 
       const data = await res.json();
       setTranslation(data.translatedText);
@@ -407,7 +430,7 @@ const renderLessonContent = (lesson: CourseLesson) => {
 
  const createForum = async () => {
    if (!currentUser) {
-     alert("Please sign in before posting to the forum.");
+     proAlert.info("Please sign in before posting to the forum.");
      return;
    }
    // Basic validation
@@ -421,30 +444,34 @@ const renderLessonContent = (lesson: CourseLesson) => {
   
  
    try {
-     const response = await fetch(`${config.BACKEND_URL}/api/forum/${id}`, {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       credentials: 'include',
-       body: JSON.stringify(payload)
-     });
- 
-     if (response.ok) {
-       alert("forum created successfully!");
-       getForum()
-     } else {
-       const errorData = await response.json();
-       console.error("Failed to create forum:", errorData);
-       alert("Failed to create forum.");
-     }
-   } catch (error) {
-     console.error("Error creating forum:", error);
-     alert("Something went wrong while creating the forum.");
-   }
- };
+    const response = await fetch(`${config.BACKEND_URL}/api/forum/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    if (handleUnauthorized(response, navigate, proAlert)) {
+      return;
+    }
+
+    if (response.ok) {
+      proAlert.success("Forum post created successfully!");
+      getForum()
+    } else {
+      const errorData = await response.json();
+      console.error("Failed to create forum:", errorData);
+      proAlert.error("Failed to create forum.");
+    }
+  } catch (error) {
+    console.error("Error creating forum:", error);
+    proAlert.error("Something went wrong while creating the forum.");
+  }
+};
 
  const createReview = async () => {
    if (!currentUser) {
-     alert("Please sign in before posting a review.");
+     proAlert.info("Please sign in before posting a review.");
      return;
    }
    // Basic validation
@@ -460,26 +487,30 @@ const renderLessonContent = (lesson: CourseLesson) => {
   
  
    try {
-     const response = await fetch(`${config.BACKEND_URL}/api/courses/reviews`, {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       credentials: 'include',
-       body: JSON.stringify(payload)
-     });
- 
-     if (response.ok) {
-       alert("forum created successfully!");
-       getReview()
-     } else {
-       const errorData = await response.json();
-       console.error("Failed to create forum:", errorData);
-       alert("Failed to create forum.");
-     }
-   } catch (error) {
-     console.error("Error creating forum:", error);
-     alert("Something went wrong while creating the forum.");
-   }
- };
+    const response = await fetch(`${config.BACKEND_URL}/api/courses/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    if (handleUnauthorized(response, navigate, proAlert)) {
+      return;
+    }
+
+    if (response.ok) {
+      proAlert.success("Review submitted successfully!");
+      getReview()
+    } else {
+      const errorData = await response.json();
+      console.error("Failed to create forum:", errorData);
+      proAlert.error("Failed to create review.");
+    }
+  } catch (error) {
+    console.error("Error creating forum:", error);
+    proAlert.error("Something went wrong while submitting the review.");
+  }
+};
 
   // const markAsDone = (index: number) => {
   //   setLessons(prev => prev.map((lesson, i) => i === index ? { ...lesson, done: true } : lesson));
@@ -516,7 +547,7 @@ setCompletedLessons(prev => ({
     if (success) {
       navigate('/signIn');
     } else {
-      alert('Unable to log out. Please try again.');
+      proAlert.error('Unable to log out. Please try again.');
     }
   };
 

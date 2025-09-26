@@ -4,6 +4,7 @@ import { Users, MessageCircle, Calendar, Plus, LogOut } from "lucide-react";
 import LoaderOverlay from "./Loader";
 import { logoutRequest } from "../utils/logout";
 import ThemeToggle from "./ThemeToggle";
+import { useProAlert } from "../context/ProAlertContext";
 
 // Dummy current user data
 const currentUser = {
@@ -45,6 +46,7 @@ const CommunityDashboard = () => {
   const [showEventForm, setShowEventForm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
+  const proAlert = useProAlert();
 
   const relevantMembers = communityMembers.filter(member => member.id !== currentUser.id && getCommonCourses(member).length > 0);
 
@@ -56,7 +58,7 @@ const CommunityDashboard = () => {
     if (success) {
       navigate('/signIn');
     } else {
-      alert('Unable to log out. Please try again.');
+      proAlert.error('Unable to log out. Please try again.');
     }
   };
 

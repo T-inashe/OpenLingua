@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../css/Courses.css";
 import config from "../config";
+import { useProAlert } from "../context/ProAlertContext";
+import { handleUnauthorized } from "../utils/handleUnauthorized";
 
 
 export default function CourseList() {
  
 const [lod,setLod] = useState('hey')
     const [posts, setPosts] = useState<object[]>([]);
+const proAlert = useProAlert();
+const navigate = useNavigate();
 const createCourse = async () => {
   setLod('yes')
   try {
@@ -15,6 +19,10 @@ const createCourse = async () => {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
 
     if (!res.ok) {
       throw new Error("Failed to fetch courses");
@@ -45,12 +53,17 @@ useEffect(()=>{
       body: JSON.stringify({ courseId: id }),
     });
 
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
+
     if (!res.ok) {
       throw new Error(`Failed to join course with id: ${id}`);
     }
 
     const data = await res.json(); // Optional: handle the response data
-    alert(`Joined course:${data}`);
+    const message = typeof data === "string" ? data : "Joined course successfully.";
+    proAlert.success(message);
 
     // fetchCourses(); // Uncomment if you want to refresh the list after joining
   } catch (error) {

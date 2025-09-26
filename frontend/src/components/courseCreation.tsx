@@ -23,6 +23,8 @@ import axios from "axios";
 import LoaderOverlay from "./Loader";
 import { logoutRequest } from "../utils/logout";
 import ThemeToggle from "./ThemeToggle";
+import { useProAlert } from "../context/ProAlertContext";
+import { handleUnauthorized } from "../utils/handleUnauthorized";
 interface Lesson {
   id: number;
   title: string;
@@ -57,6 +59,7 @@ interface CourseData {
 const CourseCreation = () => {
   const { id } = useParams();
  const navigate = useNavigate()
+  const proAlert = useProAlert();
   const [isVisible, setIsVisible] = useState(false);
    const [publicc, setPublic] = useState("true");
    const [community, setCommunity] = useState("true");
@@ -146,7 +149,7 @@ const CourseCreation = () => {
       if (success) {
         navigate('/signIn');
       } else {
-        alert('Unable to log out. Please try again.');
+        proAlert.error('Unable to log out. Please try again.');
       }
     });
   };
@@ -263,7 +266,7 @@ const CourseCreation = () => {
   const createCourse = async () => {
   // Basic validation
   if (!courseData.title || !courseData.description || !courseData.language) {
-    alert("Please fill in all required fields.");
+    proAlert.info("Please fill in all required fields.");
     return;
   }
 // upload files first
@@ -317,17 +320,21 @@ const CourseCreation = () => {
       body: JSON.stringify(payload)
     });
 
+    if (handleUnauthorized(response, navigate, proAlert)) {
+      return;
+    }
+
     if (response.ok) {
-      alert("Course created successfully!");
+      proAlert.success("Course created successfully!");
      navigate(`/dashboard`)
     } else {
       const errorData = await response.json();
       console.error("Failed to create course:", errorData);
-      alert("Failed to create course.");
+      proAlert.error("Failed to create course.");
     }
   } catch (error) {
     console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+    proAlert.error("Something went wrong while creating the course.");
   }
 };
 

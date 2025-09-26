@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import ThemeToggle from "./ThemeToggle";
 
 const menus = ['Home', 'About', 'Testimonials', 'Contact']
 
@@ -100,7 +99,6 @@ const LandingPage = () => {
                         })}
                     </div>
                     <div className="flex items-center gap-3">
-                        <ThemeToggle />
                         <Link to="/signIn">
                             <button className={`bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 transform ${isVisible? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
                                 Sign In

@@ -9,22 +9,25 @@ import Dashboard from './components/dashboard';
 import CourseCreation from './components/courseCreation';
 import CommunityDashboard from './components/communityDashboard';
 import { ThemeProvider } from './context/ThemeContext';
+import { ProAlertProvider } from './context/ProAlertContext';
 
 function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
+      <ProAlertProvider>
+        <BrowserRouter>
+          <Routes>
           {/* <Route path="/" element={<LandingPage />} /> */}
-          <Route path="/signIn" element={<SignIn />} />
-          <Route path="/signUp" element={<SignUp />}/>
-          <Route path="/community" element={<CommunityDashboard />}/>
-          <Route path="/create/:id" element={<CourseCreation/>} />
-          <Route path="/course/:id" element={<CourseDashboard />} />
-          <Route path="/dashboard" element={<Dashboard/>} />
-          <Route path="/" element={<LandingPage/>} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="/signIn" element={<SignIn />} />
+            <Route path="/signUp" element={<SignUp />}/>
+            <Route path="/community" element={<CommunityDashboard />}/>
+            <Route path="/create/:id" element={<CourseCreation/>} />
+            <Route path="/course/:id" element={<CourseDashboard />} />
+            <Route path="/dashboard" element={<Dashboard/>} />
+            <Route path="/" element={<LandingPage/>} />
+          </Routes>
+        </BrowserRouter>
+      </ProAlertProvider>
     </ThemeProvider>
   );
 }
