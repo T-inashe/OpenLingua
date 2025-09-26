@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import config from "../config";
-import { 
-  Plus, 
-  Trash2, 
-  Upload, 
-  Play,  
-  Image, 
-  FileText, 
+import {
+  Plus,
+  Trash2,
+  Upload,
+  Play,
+  Image,
+  FileText,
   Settings,
   ChevronDown,
   ChevronRight,
@@ -15,10 +15,16 @@ import {
   Clock,
   Target,
   Globe,
-  ArrowLeft
+  ArrowLeft,
+  LogOut
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import LoaderOverlay from "./Loader";
+import { logoutRequest } from "../utils/logout";
+import ThemeToggle from "./ThemeToggle";
+import { useProAlert } from "../context/ProAlertContext";
+import { handleUnauthorized } from "../utils/handleUnauthorized";
 interface Lesson {
   id: number;
   title: string;
@@ -26,7 +32,8 @@ interface Lesson {
   content: string | null;
   duration: number;
   unitId:number;
-  file: File | null
+  file: File | null;
+  position?: number;
 }
 
 interface Unit {
@@ -35,6 +42,7 @@ interface Unit {
   description: string;
   lessons: Lesson[];
   isExpanded: boolean;
+  position?: number;
 }
 
 interface CourseData {
@@ -51,6 +59,7 @@ interface CourseData {
 const CourseCreation = () => {
   const { id } = useParams();
  const navigate = useNavigate()
+  const proAlert = useProAlert();
   const [isVisible, setIsVisible] = useState(false);
    const [publicc, setPublic] = useState("true");
    const [community, setCommunity] = useState("true");
@@ -71,10 +80,79 @@ const CourseCreation = () => {
     
   ]);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const pendingNavigation = useRef<(() => void | Promise<void>) | null>(null);
 
   useEffect(() => {
     setIsVisible(true);
   }, []);
+
+  const hasUnsavedChanges = Boolean(
+    courseData.title ||
+    courseData.description ||
+    courseData.language ||
+    courseData.category ||
+    courseData.estimatedHours ||
+    courseData.targetAudience ||
+    info ||
+    units.length > 0
+  );
+
+  useEffect(() => {
+    const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', beforeUnloadHandler);
+    return () => window.removeEventListener('beforeunload', beforeUnloadHandler);
+  }, [hasUnsavedChanges]);
+
+  const requestNavigation = (navigateFn: () => void | Promise<void>) => {
+    if (hasUnsavedChanges) {
+      pendingNavigation.current = navigateFn;
+      setShowLeaveModal(true);
+    } else {
+      navigateFn();
+    }
+  };
+
+  const confirmNavigation = () => {
+    const nav = pendingNavigation.current;
+    pendingNavigation.current = null;
+    setShowLeaveModal(false);
+    if (nav) {
+      Promise.resolve(nav()).catch((error) => {
+        console.error('Navigation action failed', error);
+      });
+    }
+  };
+
+  const cancelNavigation = () => {
+    pendingNavigation.current = null;
+    setShowLeaveModal(false);
+  };
+
+  const handleLogoClick = () => {
+    requestNavigation(() => navigate('/dashboard'));
+  };
+
+  const handleLogoutClick = () => {
+    requestNavigation(async () => {
+      setLoggingOut(true);
+      const success = await logoutRequest();
+      setLoggingOut(false);
+
+      if (success) {
+        navigate('/signIn');
+      } else {
+        proAlert.error('Unable to log out. Please try again.');
+      }
+    });
+  };
 
   const steps = [
     { id: 1, title: "Course Info", icon: BookOpen },
@@ -91,7 +169,8 @@ const CourseCreation = () => {
       title: `Unit ${units.length + 1}`,
       description: "",
       lessons: [],
-      isExpanded: true
+      isExpanded: true,
+      position: units.length
     };
     setUnits([...units, newUnit]);
   };
@@ -105,7 +184,8 @@ const CourseCreation = () => {
       content: "",
       duration: 5,
       unitId:unitId,
-      file: null
+      file: null,
+      position: units.find((unit) => unit.id === unitId)?.lessons.length ?? 0
     };
 
     setUnits(units.map(unit => 
@@ -144,7 +224,7 @@ const CourseCreation = () => {
     ));
   };
 
-  const updateSelectedLesson = (field: keyof Lesson, value: string | number) => {
+  const updateSelectedLesson = (field: keyof Lesson, value: string | number | File | null) => {
     if (selectedLesson) {
       const updatedLesson = { ...selectedLesson, [field]: value };
       setSelectedLesson(updatedLesson);
@@ -175,7 +255,9 @@ const CourseCreation = () => {
         },
       });
 
-      return res.data.fileUrl;
+      const fileUrl: string = res.data.fileUrl;
+      if (!fileUrl) return null;
+      return fileUrl.startsWith('http') ? fileUrl : `${config.BACKEND_URL}${fileUrl}`;
     } catch (err) {
       console.error("Upload failed:", err);
       return null;
@@ -184,23 +266,23 @@ const CourseCreation = () => {
   const createCourse = async () => {
   // Basic validation
   if (!courseData.title || !courseData.description || !courseData.language) {
-    alert("Please fill in all required fields.");
+    proAlert.info("Please fill in all required fields.");
     return;
   }
 // upload files first
   await Promise.all(
-  units.map(async (unit) => {
-    await Promise.all(
-      unit.lessons.map(async (lesson) => {
-        if (lesson.file) {
-          const fileUrl = await uploadLessonFile(lesson.file);
-          lesson.content = fileUrl; // <--- update lesson content directly
-        }
-      })
-    );
-    return unit; // return updated unit with modified lessons
-  })
-);
+    units.map(async (unit) => {
+      await Promise.all(
+        unit.lessons.map(async (lesson) => {
+          if (lesson.file) {
+            const fileUrl = await uploadLessonFile(lesson.file);
+            lesson.content = fileUrl; // <--- update lesson content directly
+          }
+        })
+      );
+      return unit; // return updated unit with modified lessons
+    })
+  );
   // Transform your state into the format expected by your backend
   const payload = {
     title: courseData.title,
@@ -214,14 +296,18 @@ const CourseCreation = () => {
     discussions: discussions, // Set default or get from user
     info: info,
     instructorId: id || "some-default-id", // Set default or get from user
-    words: units.flatMap(unit =>
-      unit.lessons.map(lesson => ({
+    units: units.map((unit, unitIndex) => ({
+      title: unit.title,
+      description: unit.description,
+      position: typeof unit.position === "number" ? unit.position : unitIndex,
+      lessons: unit.lessons.map((lesson, lessonIndex) => ({
         title: lesson.title,
         type: lesson.type,
-        duration: lesson.duration.toString(),
-        content: lesson.content
+        duration: Number(lesson.duration ?? 0),
+        content: lesson.content,
+        position: typeof lesson.position === "number" ? lesson.position : lessonIndex
       }))
-    )
+    }))
 
   };
  
@@ -234,17 +320,21 @@ const CourseCreation = () => {
       body: JSON.stringify(payload)
     });
 
+    if (handleUnauthorized(response, navigate, proAlert)) {
+      return;
+    }
+
     if (response.ok) {
-      alert("Course created successfully!");
+      proAlert.success("Course created successfully!");
      navigate(`/dashboard`)
     } else {
       const errorData = await response.json();
       console.error("Failed to create course:", errorData);
-      alert("Failed to create course.");
+      proAlert.error("Failed to create course.");
     }
   } catch (error) {
     console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+    proAlert.error("Something went wrong while creating the course.");
   }
 };
 
@@ -751,18 +841,32 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative">
+      {loggingOut && <LoaderOverlay message="Logging out..." />}
       <header className={`bg-slate-900/80 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              <button
+                onClick={handleLogoClick}
+                type="button"
+                className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+              >
                 OpenLingua
-              </div>
+              </button>
              
             </div>
-            
-            
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={handleLogoutClick}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
+              >
+                <LogOut size={16} />
+                Log out
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -828,9 +932,34 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
               </button>
             )}
           </div>
-        </div>
       </div>
     </div>
+
+      {showLeaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-slate-900/90 border border-white/15 rounded-2xl px-8 py-6 max-w-md w-full text-center shadow-xl">
+            <h3 className="text-xl font-semibold text-white mb-3">Leave this page?</h3>
+            <p className="text-sm text-gray-300 mb-6">
+              You have unsaved changes. Navigating away now might cause you to lose your progress.
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={cancelNavigation}
+                className="px-4 py-2 text-sm font-medium text-gray-300 bg-white/10 rounded-lg hover:bg-white/15 transition-colors"
+              >
+                Stay here
+              </button>
+              <button
+                onClick={confirmNavigation}
+                className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg hover:opacity-90 transition-opacity"
+              >
+                Leave page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+  </div>
   );
 };
 

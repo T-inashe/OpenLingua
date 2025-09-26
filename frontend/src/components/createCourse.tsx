@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import config from "../config";
 import "../css/CreateCourse.css";
+import { useProAlert } from "../context/ProAlertContext";
+import { handleUnauthorized } from "../utils/handleUnauthorized";
 type Word = {
   term: string;
   meaning: string;
@@ -19,6 +22,9 @@ export default function CreateCourse() {
   const [wordEnglish, setWordEnglish] = useState("");
   const [wordUsage, setWordUsage] = useState("");
 
+  const proAlert = useProAlert();
+  const navigate = useNavigate();
+
  
 
   const addWord = () => {
@@ -32,10 +38,10 @@ export default function CreateCourse() {
 
   const createCourse = async () => {
       if (!title || !code || !description) {
-      alert("Please fill in all required fields.");
+      proAlert.info("Please fill in all required fields.");
       return;
     }
-  await fetch(`${config.BACKEND_URL}/api/courses/`, {
+  const res = await fetch(`${config.BACKEND_URL}/api/courses/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -45,6 +51,10 @@ export default function CreateCourse() {
       words: words,
     }),
   });
+
+  if (handleUnauthorized(res, navigate, proAlert)) {
+    return;
+  }
 //  fetchCourses(); // refresh
  
 };
