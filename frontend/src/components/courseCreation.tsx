@@ -22,6 +22,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import LoaderOverlay from "./Loader";
 import { logoutRequest } from "../utils/logout";
+import ThemeToggle from "./ThemeToggle";
 interface Lesson {
   id: number;
   title: string;
@@ -848,14 +849,17 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
               </button>
              
             </div>
-            <button
-              type="button"
-              onClick={handleLogoutClick}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
-            >
-              <LogOut size={16} />
-              Log out
-            </button>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={handleLogoutClick}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
+              >
+                <LogOut size={16} />
+                Log out
+              </button>
+            </div>
           </div>
         </div>
       </header>

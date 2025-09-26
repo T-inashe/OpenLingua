@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Users, MessageCircle, Calendar, Plus, LogOut } from "lucide-react";
 import LoaderOverlay from "./Loader";
 import { logoutRequest } from "../utils/logout";
+import ThemeToggle from "./ThemeToggle";
 
 // Dummy current user data
 const currentUser = {
@@ -71,14 +72,17 @@ const CommunityDashboard = () => {
         >
           OpenLingua
         </button>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
-        >
-          <LogOut size={16} />
-          Log out
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
+          >
+            <LogOut size={16} />
+            Log out
+          </button>
+        </div>
       </div>
 
       {/* Header */}
