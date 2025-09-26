@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, BookOpen, TrendingUp, Users, Star, Award, Settings, Bell } from "lucide-react";
+import { Search, Plus, BookOpen, TrendingUp, Users, Star, Award, Settings, Bell, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import config from "../config";
+import LoaderOverlay from "./Loader";
+import { logoutRequest } from "../utils/logout";
+import ThemeToggle from "./ThemeToggle";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -13,6 +16,7 @@ const Dashboard = () => {
   const [mycourses, setMycourses] = useState<Courses[]>([]);
   const [coursess, setCoursess] = useState<Courses[]>([]);
   const [joined, setJoined] = useState<Joined[]>([]);
+  const [isPageLoading, setIsPageLoading] = useState(true);
   // const [joinedall, setJoinedall] = useState<Joined[]>([]);
   // const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
 
@@ -40,33 +44,30 @@ const Dashboard = () => {
   }
 
   const getUser = async () => {
-    //  setLod('yes')
     try {
       const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         credentials: 'include',
       });
-      //alert(res.json())
+
       if (!res.ok) {
-        throw new Error("Failed to fetch courses");
+        throw new Error("Failed to fetch current user");
       }
 
       const data = await res.json();
 
-      setUser(data.user);  // Use the courses array
-      setInit(getInitials(data.user.name))
-      getMyCourses(data.user)
-      getJoinedCourses(data.user)
-      // setLod('no')
-      // fetchCourses(); // Uncomment if needed to refresh separately
+      setUser(data.user);
+      setInit(getInitials(data.user.name));
+
+      await Promise.all([
+        getMyCourses(data.user),
+        getJoinedCourses(data.user)
+      ]);
     } catch (error) {
-      console.error("Error fetching courses:", error);
+      console.error("Error fetching user:", error);
     }
   };
-  useEffect(() => {
-    getUser()
-  }, [])
 
   const getMyCourses = async (user: User) => {
     // Basic validation
@@ -119,20 +120,28 @@ const Dashboard = () => {
       const data = await res.json();
       // alert(JSON.stringify(data))
       if (Array.isArray(data.courses)) {
-        setCoursess(data.courses);  // Use the courses array
+        setCoursess(data.courses);
       } else {
         console.error("Expected an array but got:", data);
-        //setMycourses([]); // fallback to empty array to avoid crashes
       }
     } catch (error) {
-      console.error("Error creating course:", error);
+      console.error("Error fetching courses:", error);
       alert("Something went wrong while creating the course.");
     }
   };
 
   useEffect(() => {
-    getCourses()
-  }, [])
+    const loadInitialData = async () => {
+      try {
+        setIsPageLoading(true);
+        await Promise.all([getUser(), getCourses()]);
+      } finally {
+        setIsPageLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
 
   const getJoinedCourses = async (user: User) => {
     try {
@@ -171,12 +180,14 @@ const Dashboard = () => {
     }
   };
 
-  const JoinCourse = async (course: Courses) => {
-    // Basic validation
+  const JoinCourse = async (course: Courses): Promise<boolean> => {
+    if (!user) {
+      alert("Please sign in before joining a course.");
+      return false;
+    }
 
-    // Transform your state into the format expected by your backend
     const payload = {
-      userId: user?.id,
+      userId: user.id,
       courseId: course.id,
     };
 
@@ -190,7 +201,9 @@ const Dashboard = () => {
 
       if (response.ok) {
         alert("Course joined successfully!");
-        navigate(`/course/${course.id}`)
+        await getJoinedCourses(user);
+        navigate(`/course/${course.id}`);
+        return true;
       } else {
         const errorData = await response.json();
         console.error("Failed to join course:", errorData);
@@ -200,6 +213,8 @@ const Dashboard = () => {
       console.error("Error joining course:", error);
       alert("Something went wrong while joining the course.");
     }
+
+    return false;
   };
 
   function getInitials(name: string): string {
@@ -314,17 +329,40 @@ const Dashboard = () => {
     }
   };
 
+  const handleLogout = async () => {
+    setIsPageLoading(true);
+    const success = await logoutRequest();
+    setIsPageLoading(false);
+
+    if (success) {
+      setUser(null);
+      setInit('');
+      setMycourses([]);
+      setCoursess([]);
+      setJoined([]);
+      navigate('/signIn');
+    } else {
+      alert('Unable to log out. Please try again.');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative">
+      {isPageLoading && <LoaderOverlay message="Loading dashboard..." />}
       {/* Header */}
       <header className={`sticky top-0 z-50 bg-slate-900/60 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+            <button
+              onClick={() => navigate('/dashboard')}
+              type="button"
+              className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+            >
               OpenLingua
-            </div>
+            </button>
             
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
               <button className="relative p-2 text-gray-400 hover:text-white transition-colors duration-200">
                 <Bell size={20} />
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-500 rounded-full"></span>
@@ -491,6 +529,7 @@ const Dashboard = () => {
             index={index}
             user={user}
             JoinCourse={JoinCourse}
+            isJoined={joined.some((joinedCourse) => joinedCourse.id === course.id)}
             getDifficultyColor={getDifficultyColor}
           />
             ))):(<p className="text-gray-400 text-xs">No Courses</p>)
@@ -538,8 +577,9 @@ interface Courses {
 type CourseCardProps = {
   course: Courses;
   index: number;
-  user?:  User  | null;
-  JoinCourse: (course: Courses) => void;
+  user?: User | null;
+  JoinCourse: (course: Courses) => Promise<boolean>;
+  isJoined: boolean;
   getDifficultyColor: (level: string) => string;
 };
 
@@ -570,6 +610,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
   index,
   user,
   JoinCourse,
+  isJoined,
   getDifficultyColor,
 }) => {
 const [joinedall, setJoinedall] = useState<Joined[]>([]);
@@ -654,16 +695,29 @@ function getRelativeTime(dateString: string): string {
 
   return "just now";
 }
-  useEffect(()=>{
-     if (user && course) {
-  getJoinedCoursesUseridCourseid(user, course);
-   
-}
-    
-  },[user, course])
+  useEffect(() => {
+    if (user && course && isJoined) {
+      getJoinedCoursesUseridCourseid(user, course);
+    } else {
+      setJoinedBoth(null);
+    }
+  }, [user, course, isJoined])
   useEffect(()=>{
 getJoinedCoursesCourseid(course)
   },[course])
+
+  const handleJoinClick = async () => {
+    if (!user) {
+      alert("Please sign in before joining a course.");
+      return;
+    }
+
+    const joined = await JoinCourse(course);
+    if (joined) {
+      await getJoinedCoursesUseridCourseid(user, course);
+      await getJoinedCoursesCourseid(course);
+    }
+  };
   return (
     <div
       style={{ transitionDelay: `${index * 100}ms` }}
@@ -687,7 +741,7 @@ getJoinedCoursesCourseid(course)
         </div>
 
         <div className="space-y-3">
-          {joinedBoth === null ? (
+          {!isJoined ? (
             <>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Progress</span>
@@ -703,12 +757,12 @@ getJoinedCoursesCourseid(course)
           ):(<>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Progress</span>
-                <span className="text-white font-medium">{joinedBoth.progress}</span>
+                <span className="text-white font-medium">{joinedBoth?.progress ?? "0%"}</span>
               </div>
               <div className="w-full bg-slate-700 rounded-full h-2">
                 <div
                   className="bg-gradient-to-r from-cyan-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${joinedBoth.progress}` }}
+                  style={{ width: `${joinedBoth?.progress ?? "0%"}` }}
                 ></div>
               </div>
             </>)}
@@ -737,20 +791,20 @@ getJoinedCoursesCourseid(course)
 
           <div className="flex items-center justify-between pt-2 border-t border-white/10">
             <span className="text-gray-400 text-xs"> {getRelativeTime(course.createdAt)}</span>
-            {joinedBoth === null? (
+            {!isJoined ? (
               <button
-                onClick={() => JoinCourse(course)}
+                onClick={handleJoinClick}
                 className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors duration-200"
               >
                 Enroll →
               </button>
             
             ) : (
-              user && ( <Link to={`/course/${course.id}/${user.id}`}>
+              <Link to={`/course/${course.id}`}>
                 <button className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors duration-200">
                   View →
                 </button>
-              </Link>)
+              </Link>
                
             )}
           </div>

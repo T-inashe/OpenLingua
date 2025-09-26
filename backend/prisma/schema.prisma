@@ -52,6 +52,7 @@ model Course {
   instructorId String
 
   words       Word[]
+  units       CourseUnit[]
   enrollments CourseEnrollment[]
   forumPosts  ForumPost[]
   courseReviews  CourseReview[] 
@@ -76,6 +77,31 @@ model Word {
   content  String
   course   Course @relation(fields: [courseId], references: [id])
   courseId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CourseUnit {
+  id          String @id @default(cuid())
+  title       String
+  description String?
+  position    Int
+  course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  lessons     CourseLesson[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CourseLesson {
+  id        String @id @default(cuid())
+  title     String
+  type      String
+  duration  Int?
+  content   String?
+  position  Int
+  unit      CourseUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  unitId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

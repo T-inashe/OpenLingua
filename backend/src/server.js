@@ -1,4 +1,7 @@
-require('dotenv').config();
+const path = require('path');
+
+// Load env variables from the project root so the shared backend/.env is used
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const app = require('./app');
 

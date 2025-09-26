@@ -1,5 +1,8 @@
-import React, { useState } from "react";
-import { Users, MessageCircle, Calendar, Plus } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Users, MessageCircle, Calendar, Plus, LogOut } from "lucide-react";
+import LoaderOverlay from "./Loader";
+import { logoutRequest } from "../utils/logout";
 
 // Dummy current user data
 const currentUser = {
@@ -39,11 +42,44 @@ const getCommonCourses = (member: typeof communityMembers[0]) => {
 const CommunityDashboard = () => {
   const [selectedMember, setSelectedMember] = useState<typeof communityMembers[0] | null>(null);
   const [showEventForm, setShowEventForm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const navigate = useNavigate();
 
   const relevantMembers = communityMembers.filter(member => member.id !== currentUser.id && getCommonCourses(member).length > 0);
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    const success = await logoutRequest();
+    setIsLoggingOut(false);
+
+    if (success) {
+      navigate('/signIn');
+    } else {
+      alert('Unable to log out. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 p-6 space-y-12">
+      {isLoggingOut && <LoaderOverlay message="Logging out..." />}
+
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate('/dashboard')}
+          type="button"
+          className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+        >
+          OpenLingua
+        </button>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
+        >
+          <LogOut size={16} />
+          Log out
+        </button>
+      </div>
 
       {/* Header */}
       <h1 className="text-white text-3xl font-bold mb-6 flex items-center">

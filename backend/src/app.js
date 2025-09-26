@@ -12,6 +12,7 @@ const passport = require('./config/passport');
 const courseRoutes = require("./routes/courseRoutes");
 const forumRoutes = require("./routes/forumRoutes");
 const vocabRoutes = require("./routes/vocabRoutes");
+const { supabase } = require('./lib/supabase');
 const app = express();
 const pool = new Pool({
   user: "postgres",
@@ -31,7 +32,7 @@ app.use(cors({
 }));
 
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 10000000,
+  windowMs: 15 * 60 * 1000,
   max: 1000,
   message: { error: "Too many requests, please try again later" }
 });
@@ -69,24 +70,44 @@ app.get('/health', (req, res) => {
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
-// configure Multer to save files to /uploads
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) =>
-    cb(null, Date.now() + "-" + file.originalname),
+// expose legacy uploads (existing files) via static route
+app.use('/uploads', express.static(uploadDir));
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
-const upload = multer({ storage });
+const storageBucket = process.env.SUPABASE_STORAGE_BUCKET || 'lesson-media';
+
 app.post("/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    // store file path in Postgres
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const ext = path.extname(req.file.originalname);
+    const objectKey = `lessons/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
 
-    res.json({ fileUrl });
+    const { error: uploadError } = await supabase.storage
+      .from(storageBucket)
+      .upload(objectKey, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError);
+      return res.status(500).json({ error: "File upload failed" });
+    }
+
+    const { data: publicData } = supabase.storage.from(storageBucket).getPublicUrl(objectKey);
+
+    if (!publicData?.publicUrl) {
+      return res.status(500).json({ error: "Could not retrieve file URL" });
+    }
+
+    res.json({ fileUrl: publicData.publicUrl });
   } catch (err) {
-    console.error(err);
+    console.error('Upload error:', err);
     res.status(500).json({ error: "File upload failed" });
   }
 });

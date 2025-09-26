@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const menus = ['Home', 'About', 'Testimonials', 'Contact']
 
 const LandingPage = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [activeTestimonial, setActivetestimonial] = useState(0)
+    const navigate = useNavigate();
     useEffect(() => {
         setIsVisible(true)
         const interval = setInterval(()=>{
@@ -69,9 +70,13 @@ const LandingPage = () => {
         <header className={`relative z-50 transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
             <div className="container px-6 py-6">
                 <div className="font-bold flex items-center justify-between">
-                    <div className=" text-2xl font-bold bg-gradient-to-r from-cyan-500 to-purple-400 bg-clip-text text-transparent">
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        type="button"
+                        className=" text-2xl font-bold bg-gradient-to-r from-cyan-500 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+                    >
                         OpenLingua
-                    </div>
+                    </button>
                     <div className="hidden md:flex space-x-8">
                         {menus.map((item: string, index: number) => {
                             let target = "#home";

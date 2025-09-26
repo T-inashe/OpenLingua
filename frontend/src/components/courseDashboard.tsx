@@ -2,15 +2,11 @@
 import config from "../config";
 
 
-import { useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star,Calendar } from "lucide-react";
-
- type Lesson = {
-  title: string;
-  content: string;
-  done: boolean;
-};
+import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar } from "lucide-react";
+import LoaderOverlay from "./Loader";
+import ThemeToggle from "./ThemeToggle";
 
 type Review = {
 user: User;
@@ -24,7 +20,24 @@ createdAt : string
 interface Word {
   title: string;
   content: string;
-  type: String;
+  type: string;
+  duration?: string;
+}
+type CourseLesson = {
+  id: string;
+  title: string;
+  content: string | null;
+  type: string;
+  duration: number | null;
+  position: number;
+};
+
+interface CourseUnit {
+  id: string;
+  title: string;
+  description?: string | null;
+  position: number;
+  lessons: CourseLesson[];
 }
 interface Course {
   id: string;
@@ -32,7 +45,8 @@ interface Course {
   createdAt: string;
   description: string;
   level: string;
-  words: Word[]
+  words?: Word[];
+  units?: CourseUnit[];
   // Add other fields if needed (like avatar, googleId, etc.)
 }
 type Event = {
@@ -56,16 +70,12 @@ createdAt : string
 };
 
 export default function CourseDashboard() {
-  const { id,uid } = useParams();
-const [course, setCourse] = useState<Course | null>(null);
-const [forums, setForums] = useState<Forum[]>([]);
-//const [lessons, setLessons] = useState<Lesson | null>(null);
-  // Example lessons for Zulu course
-  const [, setLessons] = useState<Lesson[]>([
-    { title: "Lesson 1: Greetings", content: "Learn how to greet in Zulu (Sawubona, Unjani)", done: false },
-    { title: "Lesson 2: Gratitude", content: "Express thanks (Ngiyabonga)", done: false },
-    { title: "Lesson 3: Basic Responses", content: "Yes (Yebo), No (Cha)", done: false },
-  ]);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [course, setCourse] = useState<Course | null>(null);
+  const [forums, setForums] = useState<Forum[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const [input, setInput] = useState("");
   const [translation, setTranslation] = useState("");
@@ -78,8 +88,33 @@ const [forums, setForums] = useState<Forum[]>([]);
   const [targetLang, setTargetLang] = useState("en");
 
 
-  const [reviews, setReviews] = useState<Review[]>([
+const [reviews, setReviews] = useState<Review[]>([
 ]);
+const [completedLessons, setCompletedLessons] = useState<Record<string, boolean>>({});
+
+const resolveLessonContent = (content: string | null): string | null => {
+  if (!content) return null;
+  return content.startsWith('http') ? content : `${config.BACKEND_URL}${content}`;
+};
+
+const fetchCurrentUser = async () => {
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include"
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch current user");
+    }
+
+    const data = await res.json();
+    setCurrentUser(data.user);
+  } catch (error) {
+    console.error("Error fetching current user:", error);
+  }
+};
 
 function getRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -117,7 +152,7 @@ const [events, setEvents] = useState<Event[]>([
   useEffect(() => {
     setTimeout(() => setIsVisible(true), 100);
   }, []);
-  const getCourses = async () => {
+const getCourses = async () => {
   // Basic validation
 
 
@@ -146,11 +181,6 @@ const [events, setEvents] = useState<Event[]>([
     alert("Something went wrong while creating the course.");
   }
 };
-
-
-useEffect(()=>{
- getCourses()
-},[])
 const getForum = async () => {
   // Basic validation
 
@@ -168,7 +198,6 @@ const getForum = async () => {
     }
 
     const data = await res.json();
-   console.log(JSON.stringify(data))
 
   setForums(data.posts);  // Use the courses array
  
@@ -177,11 +206,6 @@ const getForum = async () => {
     alert("Something went wrong while creating the course.");
   }
 };
-
-
-useEffect(()=>{
- getForum()
-},[])
 
 const getReview = async () => {
   // Basic validation
@@ -200,7 +224,6 @@ const getReview = async () => {
     }
 
     const data = await res.json();
-   console.log(JSON.stringify(data))
 
   setReviews(data.reviews);  // Use the courses array
  
@@ -210,10 +233,93 @@ const getReview = async () => {
   }
 };
 
+useEffect(() => {
+  const load = async () => {
+    try {
+      setPageLoading(true);
+      await Promise.all([
+        fetchCurrentUser(),
+        getCourses(),
+        getForum(),
+        getReview()
+      ]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
-useEffect(()=>{
- getReview()
-},[])
+  load();
+}, [id]);
+
+const unitsToRender = course
+  ? course.units && course.units.length > 0
+    ? course.units
+    : course.words
+    ? [
+        {
+          id: "legacy",
+          title: "Course Content",
+          description: "",
+          position: 0,
+          lessons: course.words.map((word, index) => ({
+            id: `${word.title}-${index}`,
+            title: word.title,
+            content: word.content,
+            type: (word.type || "text").toLowerCase(),
+            duration: word.duration ? Number(word.duration) || null : null,
+            position: index
+          }))
+        }
+      ]
+    : []
+  : [];
+
+const renderLessonContent = (lesson: CourseLesson) => {
+  const resolvedContent = resolveLessonContent(lesson.content);
+
+  if (!resolvedContent) {
+    return <p className="text-gray-400 text-sm italic">No content provided.</p>;
+  }
+
+  const normalizedType = (lesson.type || "text").toLowerCase();
+
+  if (normalizedType === "audio") {
+    return (
+      <audio controls className="w-full mt-3">
+        <source src={resolvedContent} />
+        Your browser does not support the audio element.
+      </audio>
+    );
+  }
+
+  if (normalizedType === "video") {
+    return (
+      <div className="mt-3">
+        <video
+          controls
+          controlsList="nodownload"
+          className="w-full rounded-lg shadow-lg"
+          style={{ maxWidth: '960px', maxHeight: '540px', aspectRatio: '16 / 9' }}
+        >
+          <source src={resolvedContent} />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    );
+  }
+
+  if (normalizedType === "image") {
+    return (
+      <img
+        src={resolvedContent}
+        alt={lesson.title}
+        className="w-full rounded-lg mt-3 object-cover"
+      />
+    );
+  }
+
+  return <p className="text-gray-300 mt-2 leading-relaxed">{resolvedContent}</p>;
+};
   const translate = async () => {
     if (!input.trim()) return;
     setLoading(true);
@@ -241,12 +347,16 @@ useEffect(()=>{
   };
 
  const createForum = async () => {
+   if (!currentUser) {
+     alert("Please sign in before posting to the forum.");
+     return;
+   }
    // Basic validation
  
    // Transform your state into the format expected by your backend
    const payload = {
      content: message,
-     userId: uid,
+     userId: currentUser.id,
  
    };
   
@@ -273,7 +383,11 @@ useEffect(()=>{
    }
  };
 
-  const createReview = async () => {
+ const createReview = async () => {
+   if (!currentUser) {
+     alert("Please sign in before posting a review.");
+     return;
+   }
    // Basic validation
  
    // Transform your state into the format expected by your backend
@@ -281,7 +395,7 @@ useEffect(()=>{
     courseId:id,
      review: newReview.text,
      rating: newReview.rating,
-     userId: uid,
+     userId: currentUser.id,
  
    };
   
@@ -328,29 +442,58 @@ attendingCount: e.attendingCount + (newAttending ? 1 : -1)
 return e;
 }));
 };
-const toggleLessonDone = (index: number) => {
-setLessons(prev => prev.map((l, i) => i === index ? { ...l, done: !l.done } : l));
+const toggleLessonDone = (lessonId: string) => {
+setCompletedLessons(prev => ({
+  ...prev,
+  [lessonId]: !prev[lessonId]
+}));
 };
 
+  const handleLogout = async () => {
+    setPageLoading(true);
+    const success = await logoutRequest();
+    setPageLoading(false);
+
+    if (success) {
+      navigate('/signIn');
+    } else {
+      alert('Unable to log out. Please try again.');
+    }
+  };
+
   return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative overflow-hidden">
-{/* Header */}
-<header className={`sticky top-0 z-50 bg-slate-900/60 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`}>
-<div className="container mx-auto px-6 py-4 flex items-center justify-between">
-<div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-OpenLingua
-</div>
-<div className="flex items-center gap-4">
-<button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-400 hover:text-white transition-colors duration-200">
-<Calendar size={20} />
-</button>
-<button className="relative p-2 text-gray-400 hover:text-white transition-colors duration-200">
-<Bell size={20} />
-<span className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-500 rounded-full"></span>
-</button>
-</div>
-</div>
-</header>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative overflow-hidden">
+      {pageLoading && <LoaderOverlay message="Loading course..." />}
+      {/* Header */}
+      <header className={`sticky top-0 z-50 bg-slate-900/60 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`}>
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <button
+            className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+            type="button"
+            onClick={() => navigate('/dashboard')}
+          >
+            OpenLingua
+          </button>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-400 hover:text-white transition-colors duration-200">
+              <Calendar size={20} />
+            </button>
+            <button className="relative p-2 text-gray-400 hover:text-white transition-colors duration-200">
+              <Bell size={20} />
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-500 rounded-full"></span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
+            >
+              <LogOut size={16} />
+              Log out
+            </button>
+          </div>
+        </div>
+      </header>
 
 
 <div className="p-6">
@@ -394,21 +537,63 @@ Welcome To {course?.title}
 <h2 className="text-white font-semibold text-xl mb-4 flex items-center gap-2">
 <BookOpen size={20} className="text-purple-400" /> Lessons
 </h2>
-<ul className="space-y-2">
+{unitsToRender.length === 0 ? (
+  <p className="text-gray-400 text-sm">No lessons available yet.</p>
+) : (
+  <div className="space-y-4">
+    {unitsToRender.map((unit) => (
+      <div key={unit.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-white font-semibold text-lg">{unit.title}</h3>
+            {unit.description && (
+              <p className="text-gray-400 text-sm mt-1">{unit.description}</p>
+            )}
+          </div>
+          <span className="text-xs text-white/40 uppercase tracking-wide">Unit {unit.position + 1}</span>
+        </div>
 
+        <ul className="mt-4 space-y-3">
+          {unit.lessons.map((lesson) => {
+            const normalizedType = (lesson.type || "text").toLowerCase();
+            const isCompleted = !!completedLessons[lesson.id];
 
-{
-course&& (course.words.map((l, i) => (
-<li key={i} className="text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5">
-<strong className="text-white">{l.title}</strong>
-<p>{l.content}</p>
-<button onClick={() => toggleLessonDone(i)} className={`mt-2 px-3 py-1 rounded-lg text-sm ${l.type ==="text" ? "bg-green-600" : "bg-cyan-600"} text-white`}>
-{l.type ==="text" ? "Done" : "Mark as Done"}
-</button>
-</li>
-)))
-}
-</ul>
+            return (
+              <li
+                key={lesson.id}
+                className="bg-black/30 border border-white/10 rounded-lg p-4 text-white"
+              >
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                  <div>
+                    <h4 className="font-semibold text-base md:text-lg">{lesson.title}</h4>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-white/60 mt-1">
+                      <span className="px-2 py-0.5 rounded-full bg-white/10 uppercase tracking-wide">
+                        {normalizedType}
+                      </span>
+                      {lesson.duration ? (
+                        <span>{lesson.duration} min</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleLessonDone(lesson.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 ${
+                      isCompleted ? "bg-green-600/80" : "bg-cyan-600/80"
+                    }`}
+                  >
+                    {isCompleted ? "Completed" : "Mark as Done"}
+                  </button>
+                </div>
+
+                {renderLessonContent(lesson)}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ))}
+  </div>
+)}
 </section>
 
 
