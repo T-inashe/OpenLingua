@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import Dashboard from '../src/components/dashboard';
+import Dashboard from '../src/components/pages/dashboard';
 
 describe('Dashboard', () => {
   it('renders dashboard heading', () => {

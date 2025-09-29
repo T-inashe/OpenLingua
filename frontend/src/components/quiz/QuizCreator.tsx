@@ -8,8 +8,8 @@ import {
   HelpCircle,
   BookOpen
 } from 'lucide-react';
-import quizService from '../services/quizService';
-import type { Quiz, QuizData } from '../types/quiz';
+import quizService from '../../services/quizService';
+import type { Quiz, QuizData } from '../../types/quiz';
 
 // Component props interface
 interface QuizCreatorProps {

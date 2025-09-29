@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import CourseDashboard from '../src/components/courseDashboard';
+import CourseDashboard from '../src/components/course/courseDashboard';
 
 // Mock config
 jest.mock('../src/config', () => ({

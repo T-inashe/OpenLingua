@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import LandingPage from '../src/components/landingPage';
+import LandingPage from '../src/components/pages/landingPage';
 
 describe('LandingPage', () => {
   it('renders hero content', () => {

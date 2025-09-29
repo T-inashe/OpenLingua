@@ -6,7 +6,7 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
-import ProfileForm from "../src/components/profileForm";
+import ProfileForm from "../src/components/auth/profileForm";
 
 describe("ProfileForm", () => {
   const setup = (overrides?: Partial<React.ComponentProps<typeof ProfileForm>>) => {

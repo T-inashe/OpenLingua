@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, MessageCircle, Calendar, Plus, LogOut } from "lucide-react";
-import LoaderOverlay from "./Loader";
-import { logoutRequest } from "../utils/logout";
-import ThemeToggle from "./ThemeToggle";
-import { useProAlert } from "../context/ProAlertContext";
+import LoaderOverlay from "../ui/Loader";
+import { logoutRequest } from "../../utils/logout";
+import ThemeToggle from "../layout/ThemeToggle";
+import { useProAlert } from "../../context/ProAlertContext";
 
 // Dummy current user data
 const currentUser = {

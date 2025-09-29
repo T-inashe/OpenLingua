@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import config from "../config";
+import config from "../../config";
 import {
   Plus,
   Trash2,
@@ -20,11 +20,11 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import LoaderOverlay from "./Loader";
-import { logoutRequest } from "../utils/logout";
-import ThemeToggle from "./ThemeToggle";
-import { useProAlert } from "../context/ProAlertContext";
-import { handleUnauthorized } from "../utils/handleUnauthorized";
+import LoaderOverlay from "../ui/Loader";
+import { logoutRequest } from "../../utils/logout";
+import ThemeToggle from "../layout/ThemeToggle";
+import { useProAlert } from "../../context/ProAlertContext";
+import { handleUnauthorized } from "../../utils/handleUnauthorized";
 interface QuizOption {
   id: number;
   text: string;

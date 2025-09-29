@@ -15,8 +15,8 @@ import {
   Target,
   Zap
 } from 'lucide-react';
-import quizService from '../services/quizService';
-import type { Quiz, QuizTemplate } from '../types/quiz';
+import quizService from '../../services/quizService';
+import type { Quiz, QuizTemplate } from '../../types/quiz';
 
 // Define component props interface
 interface QuizManagerProps {
@@ -40,8 +40,8 @@ const QuizManager = ({ courseId, isInstructor = false }: QuizManagerProps) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [apiStatus, setApiStatus] = useState<'unknown' | 'online' | 'offline' | 'error'>('unknown');
-  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
-  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+  const [_showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [_selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [templates, setTemplates] = useState<QuizTemplate[]>([]);
   const [showTemplates, setShowTemplates] = useState<boolean>(false);
 

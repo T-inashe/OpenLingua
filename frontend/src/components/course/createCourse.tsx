@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import config from "../config";
-import "../css/CreateCourse.css";
-import { useProAlert } from "../context/ProAlertContext";
-import { handleUnauthorized } from "../utils/handleUnauthorized";
+import config from "../../config";
+import "../../css/CreateCourse.css";
+import { useProAlert } from "../../context/ProAlertContext";
+import { handleUnauthorized } from "../../utils/handleUnauthorized";
 type Word = {
   term: string;
   meaning: string;

@@ -9,8 +9,8 @@ import {
   BookOpen,
   Trophy
 } from 'lucide-react';
-import quizService from '../services/quizService';
-import type { Quiz, QuizResult, QuizQuestion } from '../types/quiz';
+import quizService from '../../services/quizService';
+import type { Quiz, QuizResult, QuizQuestion } from '../../types/quiz';
 
 // Component props interface
 interface QuizTakingProps {

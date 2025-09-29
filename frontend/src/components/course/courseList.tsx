@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import "../css/Courses.css";
-import config from "../config";
-import { useProAlert } from "../context/ProAlertContext";
-import { handleUnauthorized } from "../utils/handleUnauthorized";
+import "../../css/Courses.css";
+import config from "../../config";
+import { useProAlert } from "../../context/ProAlertContext";
+import { handleUnauthorized } from "../../utils/handleUnauthorized";
 
 
 export default function CourseList() {

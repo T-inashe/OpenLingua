@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import Dashboard from '../src/components/dashboard';
+import Dashboard from '../src/components/pages/dashboard';
 
 const BACKEND_URL = require('../src/config').default.BACKEND_URL;
 
