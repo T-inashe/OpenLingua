@@ -25,6 +25,19 @@ import { logoutRequest } from "../utils/logout";
 import ThemeToggle from "./ThemeToggle";
 import { useProAlert } from "../context/ProAlertContext";
 import { handleUnauthorized } from "../utils/handleUnauthorized";
+interface QuizOption {
+  id: number;
+  text: string;
+}
+
+interface QuizQuestion {
+  id: number;
+  prompt: string;
+  options: QuizOption[];
+  correctOptionId: number;
+  explanation: string;
+}
+
 interface Lesson {
   id: number;
   title: string;
@@ -34,6 +47,7 @@ interface Lesson {
   unitId:number;
   file: File | null;
   position?: number;
+  quizQuestions?: QuizQuestion[];
 }
 
 interface Unit {
@@ -83,6 +97,179 @@ const CourseCreation = () => {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const pendingNavigation = useRef<(() => void | Promise<void>) | null>(null);
+
+  const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
+
+  const createQuizOption = (text: string): QuizOption => ({
+    id: generateId(),
+    text,
+  });
+
+  const createQuizQuestion = (): QuizQuestion => {
+    const optionA = createQuizOption("Option A");
+    const optionB = createQuizOption("Option B");
+    return {
+      id: generateId(),
+      prompt: "New question",
+      options: [optionA, optionB],
+      correctOptionId: optionA.id,
+      explanation: "",
+    };
+  };
+
+  const ensureQuizLesson = (lesson: Lesson): Lesson => {
+    if (lesson.type !== "quiz") {
+      const { quizQuestions, ...rest } = lesson;
+      return rest as Lesson;
+    }
+
+    if (lesson.quizQuestions && lesson.quizQuestions.length > 0) {
+      return lesson;
+    }
+
+    return {
+      ...lesson,
+      quizQuestions: [createQuizQuestion()],
+    };
+  };
+
+  const replaceLesson = (updatedLesson: Lesson) => {
+    setSelectedLesson(updatedLesson);
+    setUnits((prevUnits) =>
+      prevUnits.map((unit) => ({
+        ...unit,
+        lessons: unit.lessons.map((lesson) =>
+          lesson.id === updatedLesson.id ? updatedLesson : lesson
+        ),
+      }))
+    );
+  };
+
+  const mutateQuizQuestions = (
+    mutator: (questions: QuizQuestion[]) => QuizQuestion[]
+  ) => {
+    if (!selectedLesson || selectedLesson.type !== "quiz") {
+      return;
+    }
+
+    const existingQuestions = selectedLesson.quizQuestions ?? [];
+    const updatedQuestions = mutator(existingQuestions).map((question) => ({
+      ...question,
+      options: question.options.map((option) => ({ ...option })),
+    }));
+
+    const updatedLesson: Lesson = {
+      ...selectedLesson,
+      quizQuestions: updatedQuestions,
+      content: null,
+      file: null,
+    };
+
+    replaceLesson(ensureQuizLesson(updatedLesson));
+  };
+
+  const addQuizQuestion = () => {
+    mutateQuizQuestions((questions) => [...questions, createQuizQuestion()]);
+  };
+
+  const removeQuizQuestion = (questionId: number) => {
+    mutateQuizQuestions((questions) => {
+      if (questions.length <= 1) {
+        return questions;
+      }
+      return questions.filter((question) => question.id !== questionId);
+    });
+  };
+
+  const updateQuizQuestion = (questionId: number, prompt: string) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId ? { ...question, prompt } : question
+      )
+    );
+  };
+
+  const updateQuizExplanation = (questionId: number, explanation: string) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId ? { ...question, explanation } : question
+      )
+    );
+  };
+
+  const addQuizOption = (questionId: number) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId
+          ? {
+              ...question,
+              options: [
+                ...question.options,
+                createQuizOption(`Option ${String.fromCharCode(65 + question.options.length)}`),
+              ],
+            }
+          : question
+      )
+    );
+  };
+
+  const updateQuizOption = (
+    questionId: number,
+    optionId: number,
+    text: string
+  ) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId
+          ? {
+              ...question,
+              options: question.options.map((option) =>
+                option.id === optionId ? { ...option, text } : option
+              ),
+            }
+          : question
+      )
+    );
+  };
+
+  const removeQuizOption = (questionId: number, optionId: number) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) => {
+        if (question.id !== questionId) {
+          return question;
+        }
+
+        if (question.options.length <= 2) {
+          return question;
+        }
+
+        const filteredOptions = question.options.filter(
+          (option) => option.id !== optionId
+        );
+
+        const nextCorrectOptionId =
+          question.correctOptionId === optionId && filteredOptions.length > 0
+            ? filteredOptions[0].id
+            : question.correctOptionId;
+
+        return {
+          ...question,
+          options: filteredOptions,
+          correctOptionId: nextCorrectOptionId,
+        };
+      })
+    );
+  };
+
+  const setCorrectOption = (questionId: number, optionId: number) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId
+          ? { ...question, correctOptionId: optionId }
+          : question
+      )
+    );
+  };
 
   useEffect(() => {
     setIsVisible(true);
@@ -177,16 +364,23 @@ const CourseCreation = () => {
 
   const addLesson = (unitId: number, lessonType: string = "text", autoSelect: boolean = false) => {
     const newLessonId = Date.now(); // Use timestamp for unique ID
-    const newLesson: Lesson = {
+    let newLesson: Lesson = {
       id: newLessonId,
       title: `${lessonType.charAt(0).toUpperCase() + lessonType.slice(1)} Lesson`,
       type: lessonType,
-      content: "",
+      content: lessonType === "quiz" ? null : "",
       duration: 5,
       unitId:unitId,
       file: null,
-      position: units.find((unit) => unit.id === unitId)?.lessons.length ?? 0
+      position: units.find((unit) => unit.id === unitId)?.lessons.length ?? 0,
     };
+
+    if (lessonType === "quiz") {
+      newLesson = {
+        ...newLesson,
+        quizQuestions: [createQuizQuestion()],
+      };
+    }
 
     setUnits(units.map(unit => 
       unit.id === unitId 
@@ -225,18 +419,55 @@ const CourseCreation = () => {
   };
 
   const updateSelectedLesson = (field: keyof Lesson, value: string | number | File | null) => {
-    if (selectedLesson) {
-      const updatedLesson = { ...selectedLesson, [field]: value };
-      setSelectedLesson(updatedLesson);
-      
-      // Update the lesson in the units array
-      setUnits(units.map(unit => ({
-        ...unit,
-        lessons: unit.lessons.map(lesson => 
-          lesson.id === selectedLesson.id ? updatedLesson : lesson
-        )
-      })));
+    if (!selectedLesson) {
+      return;
     }
+
+    let updatedLesson: Lesson = { ...selectedLesson };
+
+    if (field === "type" && typeof value === "string") {
+      updatedLesson = {
+        ...updatedLesson,
+        type: value,
+        file: null,
+        content: value === "quiz" ? null : updatedLesson.content ?? "",
+      };
+      updatedLesson = ensureQuizLesson(updatedLesson);
+    } else if (field === "content") {
+      if (updatedLesson.type === "quiz") {
+        return;
+      }
+      updatedLesson = {
+        ...updatedLesson,
+        content: typeof value === "string" ? value : updatedLesson.content,
+      };
+    } else if (field === "duration") {
+      updatedLesson = {
+        ...updatedLesson,
+        duration: typeof value === "number" ? value : updatedLesson.duration,
+      };
+    } else if (field === "file") {
+      updatedLesson = {
+        ...updatedLesson,
+        file: (value as File | null) ?? null,
+        content: updatedLesson.type === "quiz" ? null : updatedLesson.content,
+      };
+    } else {
+      updatedLesson = {
+        ...updatedLesson,
+        [field]: value,
+      } as Lesson;
+    }
+
+    if (updatedLesson.type === "quiz") {
+      updatedLesson = ensureQuizLesson(updatedLesson);
+      updatedLesson = {
+        ...updatedLesson,
+        file: null,
+      };
+    }
+
+    replaceLesson(updatedLesson);
   };
    const [progress, setProgress] = useState<number>(0);
 
@@ -304,7 +535,10 @@ const CourseCreation = () => {
         title: lesson.title,
         type: lesson.type,
         duration: Number(lesson.duration ?? 0),
-        content: lesson.content,
+        content:
+          lesson.type === "quiz"
+            ? JSON.stringify({ questions: lesson.quizQuestions ?? [] })
+            : lesson.content,
         position: typeof lesson.position === "number" ? lesson.position : lessonIndex
       }))
     }))
@@ -683,17 +917,20 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
 {/* Content */}
 <div>
 <label className="block text-white font-medium mb-2">Lesson Content</label>
-{selectedLesson.file === null ? (
+{selectedLesson.type === "quiz" ? (
+  <div className="rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 p-4 text-sm text-cyan-200">
+    Quiz content is managed in the Quiz Questions section below. Add questions and answer choices to build an interactive experience.
+  </div>
+) : selectedLesson.file === null ? (
   <textarea
     rows={12}
     placeholder="Enter your lesson content here..."
-    value={selectedLesson.content ? selectedLesson.content:""}
+    value={selectedLesson.content ? selectedLesson.content : ""}
     onChange={(e) => updateSelectedLesson("content", e.target.value)}
     className="w-full bg-slate-800/50 border border-white/10 rounded-lg p-4 text-white resize-none"
   />
 ) : (
   <div className="w-full">
-
     {selectedLesson?.file?.type.startsWith("image/") ? (
       <img
         src={URL.createObjectURL(selectedLesson.file)}
@@ -724,14 +961,115 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
 
 {/* Quiz handling (if type === quiz) */}
 {selectedLesson.type === "quiz" && (
-<div className="space-y-4">
-<h4 className="text-white font-medium">Quiz Questions</h4>
-{/* TODO: Add proper quiz state handling */}
-<button className="flex items-center space-x-2 text-cyan-400 hover:text-cyan-300">
-<Plus size={16} />
-<span className="text-sm">Add Question</span>
-</button>
-</div>
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <h4 className="text-white font-medium">Quiz Builder</h4>
+      <button
+        type="button"
+        onClick={addQuizQuestion}
+        className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20"
+      >
+        <Plus size={16} /> Add Question
+      </button>
+    </div>
+
+    <div className="space-y-4">
+      {selectedLesson.quizQuestions?.map((question, index) => (
+        <div
+          key={question.id}
+          className="space-y-4 rounded-lg border border-white/10 bg-slate-900/60 p-4"
+        >
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/20 text-sm font-semibold text-cyan-200">
+                {index + 1}
+              </span>
+              <span className="text-white font-medium">Question</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => addQuizOption(question.id)}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1 text-xs text-white/80 hover:bg-white/10"
+                disabled={question.options.length >= 6}
+              >
+                <Plus size={14} /> Option
+              </button>
+              <button
+                type="button"
+                onClick={() => removeQuizQuestion(question.id)}
+                className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-40"
+                disabled={(selectedLesson.quizQuestions?.length ?? 0) <= 1}
+              >
+                <Trash2 size={14} /> Remove
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-white/80">Prompt</label>
+              <textarea
+                rows={2}
+                value={question.prompt}
+                onChange={(e) => updateQuizQuestion(question.id, e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-white focus:border-cyan-500/40 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-white/80">Answer choices</span>
+              {question.options.map((option, optionIndex) => (
+                <div
+                  key={option.id}
+                  className="flex flex-col gap-2 rounded-lg border border-white/10 bg-slate-900/70 p-3 md:flex-row md:items-center"
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name={`correct-${question.id}`}
+                      checked={question.correctOptionId === option.id}
+                      onChange={() => setCorrectOption(question.id, option.id)}
+                      className="h-4 w-4 accent-cyan-400"
+                    />
+                    <span className="text-xs uppercase tracking-wide text-white/60">
+                      {String.fromCharCode(65 + optionIndex)}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={option.text}
+                    onChange={(e) => updateQuizOption(question.id, option.id, e.target.value)}
+                    className="flex-1 rounded-lg border border-white/10 bg-transparent px-3 py-2 text-white focus:border-cyan-500/40 focus:outline-none"
+                    placeholder="Enter option text"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeQuizOption(question.id, option.id)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10 disabled:opacity-40"
+                    disabled={question.options.length <= 2}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-white/80">Feedback message (shown after answering)</label>
+              <textarea
+                rows={2}
+                value={question.explanation}
+                onChange={(e) => updateQuizExplanation(question.id, e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-white focus:border-cyan-500/40 focus:outline-none"
+                placeholder="Explain why the answer is correct or provide tips"
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
 )}
 </div>
 ) : (
