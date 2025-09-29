@@ -2,19 +2,14 @@
 import config from "../config";
 
 
-import { useParams } from "react-router-dom";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star,Calendar } from "lucide-react";
-
- type Lesson = {
-  id?: string;
-  title: string;
-  content: string;
-  done: boolean;
-  type: 'vocabulary' | 'grammar' | 'exercise' | 'reading';
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  estimatedTime?: number; // in minutes
-};
+import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar, LogOut } from "lucide-react";
+import LoaderOverlay from "./Loader";
+import ThemeToggle from "./ThemeToggle";
+import { useProAlert } from "../context/ProAlertContext";
+import { handleUnauthorized } from "../utils/handleUnauthorized";
+import { logoutRequest } from "../utils/logout";
 
 type Review = {
 user: User;
@@ -30,6 +25,23 @@ interface Word {
   title: string;
   content: string;
   type: string;
+  duration?: string;
+}
+type CourseLesson = {
+  id: string;
+  title: string;
+  content: string | null;
+  type: string;
+  duration: number | null;
+  position: number;
+};
+
+interface CourseUnit {
+  id: string;
+  title: string;
+  description?: string | null;
+  position: number;
+  lessons: CourseLesson[];
 }
 interface Course {
   id: string;
@@ -37,7 +49,8 @@ interface Course {
   createdAt: string;
   description: string;
   level: string;
-  words: Word[]
+  words?: Word[];
+  units?: CourseUnit[];
   // Add other fields if needed (like avatar, googleId, etc.)
 }
 type Event = {
@@ -47,9 +60,22 @@ description: string;
 datetime: string;
 attendingCount: number;
 attending: boolean;
-capacity?: number;
-location?: string;
-type: 'workshop' | 'qa' | 'cultural' | 'practice';
+};
+type QuizOption = {
+  id: number;
+  text: string;
+};
+
+type QuizQuestion = {
+  id: number;
+  prompt: string;
+  options: QuizOption[];
+  correctOptionId: number;
+  explanation?: string;
+};
+
+type QuizLessonContent = {
+  questions?: QuizQuestion[];
 };
 interface User {
   id: string;
@@ -65,42 +91,15 @@ createdAt : string
 };
 
 export default function CourseDashboard() {
-  const { id, uid } = useParams();
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
   const [forums, setForums] = useState<Forum[]>([]);
-
-  // Example lessons for Zulu course
-  const [lessons, setLessons] = useState<Lesson[]>([
-    { 
-      id: '1',
-      title: "Lesson 1: Basic Greetings", 
-      content: "Learn essential Zulu greetings: Sawubona (Hello), Unjani? (How are you?)", 
-      done: false,
-      type: 'vocabulary',
-      difficulty: 'beginner',
-      estimatedTime: 15
-    },
-    { 
-      id: '2',
-      title: "Lesson 2: Expressing Gratitude", 
-      content: "Master gratitude expressions: Ngiyabonga (Thank you), Ngiyabonga kakhulu (Thank you very much)", 
-      done: false,
-      type: 'vocabulary',
-      difficulty: 'beginner',
-      estimatedTime: 10
-    },
-    { 
-      id: '3',
-      title: "Lesson 3: Basic Responses", 
-      content: "Learn to respond appropriately: Yebo (Yes), Cha (No), Ngiyaphila (I am well)", 
-      done: false,
-      type: 'grammar',
-      difficulty: 'beginner',
-      estimatedTime: 20
-    },
-  ]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const [input, setInput] = useState("");
+  const proAlert = useProAlert();
   const [translation, setTranslation] = useState("");
   const [message, setMessage] = useState("");
   const [isVisible, setIsVisible] = useState(false);
@@ -113,8 +112,41 @@ export default function CourseDashboard() {
   const [targetLang, setTargetLang] = useState("en");
 
 
-  const [reviews, setReviews] = useState<Review[]>([
+const [reviews, setReviews] = useState<Review[]>([
 ]);
+const [completedLessons, setCompletedLessons] = useState<Record<string, boolean>>({});
+const [quizResponses, setQuizResponses] = useState<Record<string, Record<string, {
+  selectedOptionId: number;
+  isCorrect: boolean;
+}>>>({});
+
+const resolveLessonContent = (content: string | null): string | null => {
+  if (!content) return null;
+  return content.startsWith('http') ? content : `${config.BACKEND_URL}${content}`;
+};
+
+const fetchCurrentUser = async () => {
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include"
+    });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch current user");
+    }
+
+    const data = await res.json();
+    setCurrentUser(data.user);
+  } catch (error) {
+    console.error("Error fetching current user:", error);
+  }
+};
 
 function getRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -168,100 +200,410 @@ const [events, setEvents] = useState<Event[]>([
 ]);
   useEffect(() => {
     setTimeout(() => setIsVisible(true), 100);
-    
-    // Load all data on component mount
-    const loadData = async () => {
-      setDataLoading(true);
-      try {
-        await Promise.all([
-          getCourses(),
-          getForum(),
-          getReview()
-        ]);
-      } catch (error) {
-        console.error("Error loading dashboard data:", error);
-      } finally {
-        setDataLoading(false);
-      }
-    };
-    
-    loadData();
-  }, [id]); // Add id as dependency
+  }, []);
+const getCourses = async () => {
+  // Basic validation
 
-  const getCourses = useCallback(async () => {
-    try {
-      const res = await fetch(`${config.BACKEND_URL}/api/courses/${id}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-      });
+
+  // Transform your state into the format expected by your backend
+ 
+ 
+
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/courses/${id}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
 
       if (!res.ok) {
         throw new Error("Failed to fetch course");
       }
 
-      const data = await res.json();
-      setCourse(data.course);
-    } catch (error) {
-      console.error("Error fetching course:", error);
-      alert("Something went wrong while fetching the course.");
-    }
-  }, [id]);
+    const data = await res.json();
+   //console.log(JSON.stringify(data.course))
 
-  const getForum = useCallback(async () => {
-    try {
-      const res = await fetch(`${config.BACKEND_URL}/api/forum/${id}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-      });
+  setCourse(data.course);  // Use the courses array
+ 
+  } catch (error) {
+    console.error("Error creating course:", error);
+    proAlert.error("Something went wrong while loading the course.");
+  }
+};
+const getForum = async () => {
+  // Basic validation
+
+  // Transform your state into the format expected by your backend
+
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/forum/${id}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
 
       if (!res.ok) {
         throw new Error("Failed to fetch forum");
       }
 
-      const data = await res.json();
-      setForums(data.posts);
-    } catch (error) {
-      console.error("Error fetching forum:", error);
-      alert("Something went wrong while fetching the forum.");
-    }
-  }, [id]);
+    const data = await res.json();
 
-  const getReview = useCallback(async () => {
-    try {
-      const res = await fetch(`${config.BACKEND_URL}/api/courses/reviews/${id}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-      });
+  setForums(data.posts);  // Use the courses array
+ 
+  } catch (error) {
+    console.error("Error creating course:", error);
+    proAlert.error("Something went wrong while loading the forum posts.");
+  }
+};
+
+const getReview = async () => {
+  // Basic validation
+
+  // Transform your state into the format expected by your backend
+
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/courses/reviews/${id}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+    });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
 
       if (!res.ok) {
         throw new Error("Failed to fetch reviews");
       }
 
-      const data = await res.json();
-      setReviews(data.reviews);
-    } catch (error) {
-      console.error("Error fetching reviews:", error);
-      alert("Something went wrong while fetching the reviews.");
+    const data = await res.json();
+
+  setReviews(data.reviews);  // Use the courses array
+ 
+  } catch (error) {
+    console.error("Error creating course:", error);
+    proAlert.error("Something went wrong while loading the course reviews.");
+  }
+};
+
+useEffect(() => {
+  const load = async () => {
+    try {
+      setPageLoading(true);
+      await Promise.all([
+        fetchCurrentUser(),
+        getCourses(),
+        getForum(),
+        getReview()
+      ]);
+    } finally {
+      setPageLoading(false);
     }
-  }, [id]);
+  };
+
+  load();
+}, [id]);
+
+const unitsToRender = course
+  ? course.units && course.units.length > 0
+    ? course.units
+    : course.words
+    ? [
+        {
+          id: "legacy",
+          title: "Course Content",
+          description: "",
+          position: 0,
+          lessons: course.words.map((word, index) => ({
+            id: `${word.title}-${index}`,
+            title: word.title,
+            content: word.content,
+            type: (word.type || "text").toLowerCase(),
+            duration: word.duration ? Number(word.duration) || null : null,
+            position: index
+          }))
+        }
+      ]
+    : []
+  : [];
+
+const lessonIds = useMemo(() => {
+  return unitsToRender.flatMap((unit) => unit.lessons.map((lesson) => lesson.id));
+}, [unitsToRender]);
+
+const storageKey = useMemo(() => {
+  if (!currentUser || !course) return null;
+  return `course-progress-${currentUser.id}-${course.id}`;
+}, [currentUser, course]);
+
+const calculateProgress = (state: Record<string, boolean>) => {
+  if (lessonIds.length === 0) return 0;
+  const completedCount = lessonIds.filter((id) => state[id]).length;
+  return Math.round((completedCount / lessonIds.length) * 100);
+};
+
+const updateProgressOnServer = async (progressValue: number) => {
+  if (!id || !currentUser) return;
+  try {
+    await fetch(`${config.BACKEND_URL}/api/courses/${id}/progress`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ progress: progressValue }),
+    });
+  } catch (error) {
+    console.error('Failed to update course progress', error);
+  }
+};
+
+useEffect(() => {
+  if (!storageKey) {
+    setCompletedLessons({});
+    return;
+  }
+
+  const stored = localStorage.getItem(storageKey);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored) as Record<string, boolean>;
+      const filtered: Record<string, boolean> = {};
+      lessonIds.forEach((lessonId) => {
+        if (parsed[lessonId]) {
+          filtered[lessonId] = true;
+        }
+      });
+      setCompletedLessons(filtered);
+      const initialProgress = calculateProgress(filtered);
+      updateProgressOnServer(initialProgress);
+    } catch (error) {
+      console.error('Failed to parse stored progress', error);
+      setCompletedLessons({});
+      updateProgressOnServer(0);
+    }
+  } else {
+    setCompletedLessons({});
+    updateProgressOnServer(0);
+  }
+}, [storageKey, lessonIds]);
+
+const renderLessonContent = (lesson: CourseLesson) => {
+  const normalizedType = (lesson.type || "text").toLowerCase();
+
+  if (normalizedType === "quiz") {
+    if (!lesson.content) {
+      return <p className="text-gray-400 text-sm italic">No quiz configured yet.</p>;
+    }
+
+    let quizContent: QuizLessonContent | null = null;
+
+    try {
+      quizContent = JSON.parse(lesson.content) as QuizLessonContent;
+    } catch (error) {
+      console.error("Failed to parse quiz content", error);
+      return (
+        <p className="text-red-300 text-sm italic">
+          Unable to load quiz content. Please contact your instructor.
+        </p>
+      );
+    }
+
+    const questions = quizContent?.questions ?? [];
+
+    if (questions.length === 0) {
+      return <p className="text-gray-400 text-sm italic">Quiz questions will appear here once added.</p>;
+    }
+
+    const lessonKey = lesson.id;
+    const lessonResponses = quizResponses[lessonKey] ?? {};
+
+    const handleOptionSelect = (question: QuizQuestion, optionId: number) => {
+      const isCorrectSelection = optionId === question.correctOptionId;
+      setQuizResponses((prev) => ({
+        ...prev,
+        [lessonKey]: {
+          ...(prev[lessonKey] ?? {}),
+          [String(question.id)]: {
+            selectedOptionId: optionId,
+            isCorrect: isCorrectSelection,
+          },
+        },
+      }));
+    };
+
+    return (
+      <div className="mt-4 space-y-6">
+        {questions.map((question, index) => {
+          const response = lessonResponses[String(question.id)];
+          const hasResponse = Boolean(response?.selectedOptionId);
+          const isCorrect = response?.isCorrect ?? false;
+          const selectedOptionId = response?.selectedOptionId ?? null;
+
+          return (
+            <div key={question.id} className="rounded-xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-sm font-semibold text-cyan-200">
+                  {index + 1}
+                </span>
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <p className="text-base font-semibold text-white">{question.prompt}</p>
+                    <p className="text-xs uppercase tracking-wide text-white/50">Choose one answer</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {question.options.map((option, optionIndex) => {
+                      const optionIsSelected = selectedOptionId === option.id;
+                      const optionIsCorrect = option.id === question.correctOptionId;
+                      const showFeedback = hasResponse;
+
+                      let borderClass = "border-white/10 hover:border-cyan-400/50";
+                      let backgroundClass = "bg-slate-900/60 hover:bg-slate-900/80";
+                      let textClass = "text-white";
+
+                      if (showFeedback) {
+                        if (optionIsCorrect) {
+                          borderClass = "border-emerald-400/60";
+                          backgroundClass = "bg-emerald-500/10";
+                          textClass = "text-emerald-200";
+                        } else if (optionIsSelected) {
+                          borderClass = "border-rose-400/60";
+                          backgroundClass = "bg-rose-500/10";
+                          textClass = "text-rose-200";
+                        } else {
+                          borderClass = "border-white/10";
+                          backgroundClass = "bg-slate-900/60";
+                          textClass = "text-white/80";
+                        }
+                      } else if (optionIsSelected) {
+                        borderClass = "border-cyan-400/60";
+                        backgroundClass = "bg-cyan-500/10";
+                      }
+
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => handleOptionSelect(question, option.id)}
+                          className={`flex w-full items-center justify-between rounded-lg border ${borderClass} px-4 py-3 text-left transition-colors duration-200 ${backgroundClass}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/5 text-sm font-semibold text-white/80">
+                              {String.fromCharCode(65 + optionIndex)}
+                            </span>
+                            <span className={`text-sm font-medium ${textClass}`}>
+                              {option.text}
+                            </span>
+                          </div>
+                          {showFeedback && optionIsCorrect && (
+                            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-300">Correct</span>
+                          )}
+                          {showFeedback && optionIsSelected && !optionIsCorrect && (
+                            <span className="text-xs font-semibold uppercase tracking-wide text-rose-300">Incorrect</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {hasResponse && (
+                    <div
+                      className={`rounded-lg border px-4 py-3 text-sm ${
+                        isCorrect
+                          ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
+                          : "border-rose-400/40 bg-rose-500/10 text-rose-200"
+                      }`}
+                    >
+                      <p className="font-medium">
+                        {isCorrect
+                          ? "Great job! That's the correct answer."
+                          : "That isn't quite right yet. Try another option."}
+                      </p>
+                      {question.explanation && (
+                        <p className="mt-2 text-xs text-white/80">
+                          {question.explanation}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const resolvedContent = resolveLessonContent(lesson.content);
+
+  if (!resolvedContent) {
+    return <p className="text-gray-400 text-sm italic">No content provided.</p>;
+  }
+
+  if (normalizedType === "audio") {
+    return (
+      <audio controls className="w-full mt-3">
+        <source src={resolvedContent} />
+        Your browser does not support the audio element.
+      </audio>
+    );
+  }
+
+  if (normalizedType === "video") {
+    return (
+      <div className="mt-3">
+        <video
+          controls
+          controlsList="nodownload"
+          className="w-full rounded-lg shadow-lg"
+          style={{ maxWidth: '960px', maxHeight: '540px', aspectRatio: '16 / 9' }}
+        >
+          <source src={resolvedContent} />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    );
+  }
+
+  if (normalizedType === "image") {
+    return (
+      <img
+        src={resolvedContent}
+        alt={lesson.title}
+        className="w-full rounded-lg mt-3 object-cover"
+      />
+    );
+  }
+
+  return <p className="text-gray-300 mt-2 leading-relaxed">{resolvedContent}</p>;
+};
   const translate = async () => {
     if (!input.trim()) return;
     setLoading(true);
     setTranslation("");
 
-    try {
-      const res = await fetch(`${config.BACKEND_URL}/api/courses/translate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          q: input,
-          source: sourceLang,
-          target: targetLang,
-        })
-      });
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/courses/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        q: input,
+        source: sourceLang,
+        target: targetLang,
+      })
+    });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
 
       const data = await res.json();
       setTranslation(data.translatedText);
@@ -273,194 +615,160 @@ const [events, setEvents] = useState<Event[]>([
     }
   };
 
- const createForum = useCallback(async () => {
-   if (!message.trim()) return;
-   
-   setForumSubmitting(true);
+ const createForum = async () => {
+   if (!currentUser) {
+     proAlert.info("Please sign in before posting to the forum.");
+     return;
+   }
+   // Basic validation
+ 
+   // Transform your state into the format expected by your backend
    const payload = {
      content: message,
-     userId: uid,
+     userId: currentUser.id,
+ 
    };
   
    try {
-     const response = await fetch(`${config.BACKEND_URL}/api/forum/${id}`, {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       credentials: 'include',
-       body: JSON.stringify(payload)
-     });
- 
-     if (response.ok) {
-       alert("Forum post created successfully!");
-       setMessage(""); // Clear the form
-       getForum();
-     } else {
-       const errorData = await response.json();
-       console.error("Failed to create forum post:", errorData);
-       alert("Failed to create forum post.");
-     }
-   } catch (error) {
-     console.error("Error creating forum post:", error);
-     alert("Something went wrong while creating the forum post.");
-   } finally {
-     setForumSubmitting(false);
-   }
- }, [message, uid, id, getForum]);
+    const response = await fetch(`${config.BACKEND_URL}/api/forum/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
 
-  const createReview = useCallback(async () => {
-   if (!newReview.text.trim()) return;
-   
-   setReviewSubmitting(true);
+    if (handleUnauthorized(response, navigate, proAlert)) {
+      return;
+    }
+
+    if (response.ok) {
+      proAlert.success("Forum post created successfully!");
+      getForum()
+    } else {
+      const errorData = await response.json();
+      console.error("Failed to create forum:", errorData);
+      proAlert.error("Failed to create forum.");
+    }
+  } catch (error) {
+    console.error("Error creating forum:", error);
+    proAlert.error("Something went wrong while creating the forum.");
+  }
+};
+
+ const createReview = async () => {
+   if (!currentUser) {
+     proAlert.info("Please sign in before posting a review.");
+     return;
+   }
+   // Basic validation
+ 
+   // Transform your state into the format expected by your backend
    const payload = {
     courseId:id,
      review: newReview.text,
      rating: newReview.rating,
-     userId: uid,
+     userId: currentUser.id,
+ 
    };
   
    try {
-     const response = await fetch(`${config.BACKEND_URL}/api/courses/reviews`, {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       credentials: 'include',
-       body: JSON.stringify(payload)
-     });
- 
-     if (response.ok) {
-       alert("Review created successfully!");
-       setNewReview({ name: "", text: "", rating: 5 }); // Clear the form
-       getReview();
-     } else {
-       const errorData = await response.json();
-       console.error("Failed to create review:", errorData);
-       alert("Failed to create review.");
-     }
-   } catch (error) {
-     console.error("Error creating review:", error);
-     alert("Something went wrong while creating the review.");
-   } finally {
-     setReviewSubmitting(false);
-   }
- }, [newReview.text, newReview.rating, uid, id, getReview]);
+    const response = await fetch(`${config.BACKEND_URL}/api/courses/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
 
-  const toggleLessonDone = useCallback((index: number) => {
-    setLessons(prev => prev.map((l, i) => i === index ? { ...l, done: !l.done } : l));
-  }, []);
-
-  const toggleReviewHelpful = useCallback(async (reviewId: string) => {
-    try {
-      const review = reviews.find(r => r.id === reviewId);
-      if (!review) return;
-
-      const response = await fetch(`${config.BACKEND_URL}/api/courses/reviews/${reviewId}/helpful`, {
-        method: 'POST',
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-        body: JSON.stringify({ helpful: !review.userMarkedHelpful })
-      });
-
-      if (response.ok) {
-        setReviews(prev => prev.map(r => 
-          r.id === reviewId 
-            ? {
-                ...r,
-                userMarkedHelpful: !r.userMarkedHelpful,
-                helpfulCount: r.userMarkedHelpful 
-                  ? r.helpfulCount - 1 
-                  : r.helpfulCount + 1
-              }
-            : r
-        ));
-      }
-    } catch (error) {
-      console.error("Error toggling review helpful:", error);
+    if (handleUnauthorized(response, navigate, proAlert)) {
+      return;
     }
-  }, [reviews]);
 
-  const attendEvent = useCallback(async (eventId: string) => {
-    try {
-      const event = events.find(e => e.id === eventId);
-      if (!event) return;
-
-      const response = await fetch(`${config.BACKEND_URL}/api/events/${eventId}/attend`, {
-        method: 'POST',
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-        body: JSON.stringify({ attending: !event.attending })
-      });
-
-      if (response.ok) {
-        setEvents(prev => prev.map(e => 
-          e.id === eventId 
-            ? {
-                ...e,
-                attending: !e.attending,
-                attendingCount: e.attending 
-                  ? e.attendingCount - 1 
-                  : e.attendingCount + 1
-              }
-            : e
-        ));
-      }
-    } catch (error) {
-      console.error("Error attending event:", error);
-      // Fallback to local state update
-      setEvents(prev => prev.map(e => 
-        e.id === eventId 
-          ? {
-              ...e,
-              attending: !e.attending,
-              attendingCount: e.attending 
-                ? e.attendingCount - 1 
-                : e.attendingCount + 1
-            }
-          : e
-      ));
+    if (response.ok) {
+      proAlert.success("Review submitted successfully!");
+      getReview()
+    } else {
+      const errorData = await response.json();
+      console.error("Failed to create forum:", errorData);
+      proAlert.error("Failed to create review.");
     }
-  }, [events]);
+  } catch (error) {
+    console.error("Error creating forum:", error);
+    proAlert.error("Something went wrong while submitting the review.");
+  }
+};
 
-  // Memoized computed values
-  const hasContent = useMemo(() => ({
-    course: course !== null,
-    forums: forums.length > 0,
-    reviews: reviews.length > 0,
-    events: events.length > 0
-  }), [course, forums.length, reviews.length, events.length]);
+  // const markAsDone = (index: number) => {
+  //   setLessons(prev => prev.map((lesson, i) => i === index ? { ...lesson, done: true } : lesson));
+  // };
 
-  const isFormValid = useMemo(() => ({
-    forum: message.trim().length > 0,
-    review: newReview.text.trim().length > 0,
-    translation: input.trim().length > 0
-  }), [message, newReview.text, input]);
+
+
+  
+  const toggleAttend = (index: number) => {
+setEvents(prev => prev.map((e, i) => {
+if (i === index) {
+const newAttending = !e.attending;
+return {
+...e,
+attending: newAttending,
+attendingCount: e.attendingCount + (newAttending ? 1 : -1)
+};
+}
+return e;
+}));
+};
+const toggleLessonDone = (lessonId: string) => {
+setCompletedLessons(prev => ({
+  ...prev,
+  [lessonId]: !prev[lessonId]
+}));
+};
+
+  const handleLogout = async () => {
+    setPageLoading(true);
+    const success = await logoutRequest();
+    setPageLoading(false);
+
+    if (success) {
+      navigate('/signIn');
+    } else {
+      proAlert.error('Unable to log out. Please try again.');
+    }
+  };
 
   return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative overflow-hidden">
-{/* Header */}
-<header className={`sticky top-0 z-50 bg-slate-900/60 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`} role="banner">
-<div className="container mx-auto px-6 py-4 flex items-center justify-between">
-<div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent" role="heading" aria-level={1}>
-OpenLingua
-</div>
-<nav className="flex items-center gap-4" role="navigation" aria-label="Main navigation">
-<button 
-  onClick={() => setSidebarOpen(true)} 
-  className="p-2 text-gray-400 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
-  aria-label="Open events calendar"
-  title="View upcoming events"
->
-<Calendar size={20} />
-</button>
-<button 
-  className="relative p-2 text-gray-400 hover:text-white transition-colors duration-200 hover:bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400"
-  aria-label="View notifications"
-  title="You have new notifications"
->
-<Bell size={20} />
-<span className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-500 rounded-full" aria-hidden="true"></span>
-</button>
-</nav>
-</div>
-</header>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative overflow-hidden">
+      {pageLoading && <LoaderOverlay message="Loading course..." />}
+      {/* Header */}
+      <header className={`sticky top-0 z-50 bg-slate-900/60 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`}>
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <button
+            className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+            type="button"
+            onClick={() => navigate('/dashboard')}
+          >
+            OpenLingua
+          </button>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-400 hover:text-white transition-colors duration-200">
+              <Calendar size={20} />
+            </button>
+            <button className="relative p-2 text-gray-400 hover:text-white transition-colors duration-200">
+              <Bell size={20} />
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-500 rounded-full"></span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
+            >
+              <LogOut size={16} />
+              Log out
+            </button>
+          </div>
+        </div>
+      </header>
 
 {/* Main Loading State */}
 {dataLoading ? (
@@ -558,100 +866,62 @@ Welcome To {course?.title}
 <h2 id="lessons-heading" className="text-white font-semibold text-xl flex items-center gap-2">
 <BookOpen size={20} className="text-purple-400" aria-hidden="true" /> Course Lessons
 </h2>
-{course && (
-<div className="text-sm text-gray-400">
-{course.words.filter(w => w.type === "completed").length} of {course.words.length} completed
-</div>
-)}
-</div>
-
-{!hasContent.course ? (
-  <div className="text-center py-8">
-    <p className="text-gray-400">Loading lessons...</p>
-  </div>
+{unitsToRender.length === 0 ? (
+  <p className="text-gray-400 text-sm">No lessons available yet.</p>
 ) : (
-<div className="space-y-4">
-{/* Course Words as Vocabulary Lessons */}
-{course && course.words.length > 0 && (
-<div>
-<h3 className="text-white font-medium text-lg mb-3 flex items-center gap-2">
-📚 Vocabulary ({course.words.length} words)
-</h3>
-<ul className="grid gap-3 md:grid-cols-2" role="list" aria-label="Vocabulary lessons">
-{course.words.map((word, i) => (
-<li key={i} className="bg-white/5 p-4 rounded-lg border border-white/5 hover:bg-white/10 transition-colors duration-200" role="listitem">
-<div className="flex justify-between items-start mb-2">
-<strong className="text-white text-lg">{word.title}</strong>
-<span className={`px-2 py-1 rounded-full text-xs font-medium ${word.type === "completed" ? "bg-green-600/20 text-green-400" : "bg-purple-600/20 text-purple-400"}`} aria-label={`Status: ${word.type}`}>
-{word.type === "completed" ? "✓ Learned" : "New"}
-</span>
-</div>
-<p className="text-gray-300 mb-3 text-sm">{word.content}</p>
-<button 
-  onClick={() => toggleLessonDone(i)} 
-  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 ${word.type === "completed" ? "bg-green-600 hover:bg-green-700 focus:ring-green-500" : "bg-cyan-600 hover:bg-cyan-700 focus:ring-cyan-500"} text-white`}
-  aria-pressed={word.type === "completed"}
-  aria-label={word.type === "completed" ? "Mark as not learned" : "Mark as learned"}
->
-{word.type === "completed" ? "✓ Learned" : "📖 Mark as Learned"}
-</button>
-</li>
-))}
-</ul>
-</div>
-)}
+  <div className="space-y-4">
+    {unitsToRender.map((unit) => (
+      <div key={unit.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-white font-semibold text-lg">{unit.title}</h3>
+            {unit.description && (
+              <p className="text-gray-400 text-sm mt-1">{unit.description}</p>
+            )}
+          </div>
+          <span className="text-xs text-white/40 uppercase tracking-wide">Unit {unit.position + 1}</span>
+        </div>
 
-{/* Structured Lessons */}
-{lessons.length > 0 && (
-<div>
-<h3 className="text-white font-medium text-lg mb-3 flex items-center gap-2">
-🎯 Structured Lessons ({lessons.filter(l => l.done).length}/{lessons.length} completed)
-</h3>
-<ul className="space-y-3" role="list" aria-label="Structured lessons">
-{lessons.map((lesson, i) => (
-<li key={lesson.id || i} className="bg-white/5 p-4 rounded-lg border border-white/5 hover:bg-white/10 transition-colors duration-200" role="listitem">
-<div className="flex justify-between items-start mb-3">
-<div className="flex-1">
-<h4 className="text-white text-lg font-medium mb-1">{lesson.title}</h4>
-<div className="flex items-center gap-4 text-sm text-gray-400 mb-2">
-<span className="flex items-center gap-1">
-📊 {lesson.difficulty}
-</span>
-<span className="flex items-center gap-1">
-🏷️ {lesson.type}
-</span>
-{lesson.estimatedTime && (
-<span className="flex items-center gap-1">
-⏱️ {lesson.estimatedTime} min
-</span>
-)}
-</div>
-</div>
-<span className={`px-3 py-1 rounded-full text-xs font-medium ${lesson.done ? "bg-green-600/20 text-green-400" : "bg-blue-600/20 text-blue-400"}`}>
-{lesson.done ? "✓ Completed" : "In Progress"}
-</span>
-</div>
-<p className="text-gray-300 mb-4">{lesson.content}</p>
-<div className="flex gap-2">
-<button 
-  onClick={() => toggleLessonDone(i)} 
-  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 ${lesson.done ? "bg-green-600 hover:bg-green-700 focus:ring-green-500" : "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"} text-white`}
-  aria-pressed={lesson.done}
->
-{lesson.done ? "✓ Completed" : "▶️ Start Lesson"}
-</button>
-{lesson.done && (
-<button className="px-4 py-2 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-800">
-🔄 Review
-</button>
-)}
-</div>
-</li>
-))}
-</ul>
-</div>
-)}
-</div>
+        <ul className="mt-4 space-y-3">
+          {unit.lessons.map((lesson) => {
+            const normalizedType = (lesson.type || "text").toLowerCase();
+            const isCompleted = !!completedLessons[lesson.id];
+
+            return (
+              <li
+                key={lesson.id}
+                className="bg-black/30 border border-white/10 rounded-lg p-4 text-white"
+              >
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                  <div>
+                    <h4 className="font-semibold text-base md:text-lg">{lesson.title}</h4>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-white/60 mt-1">
+                      <span className="px-2 py-0.5 rounded-full bg-white/10 uppercase tracking-wide">
+                        {normalizedType}
+                      </span>
+                      {lesson.duration ? (
+                        <span>{lesson.duration} min</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleLessonDone(lesson.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 ${
+                      isCompleted ? "bg-green-600/80" : "bg-cyan-600/80"
+                    }`}
+                  >
+                    {isCompleted ? "Completed" : "Mark as Done"}
+                  </button>
+                </div>
+
+                {renderLessonContent(lesson)}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ))}
+  </div>
 )}
 </section>
 

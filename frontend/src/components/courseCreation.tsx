@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import config from "../config";
-import { 
-  Plus, 
-  Trash2, 
-  Upload, 
-  Play,  
-  Image, 
-  FileText, 
+import {
+  Plus,
+  Trash2,
+  Upload,
+  Play,
+  Image,
+  FileText,
   Settings,
   ChevronDown,
   ChevronRight,
@@ -15,10 +15,29 @@ import {
   Clock,
   Target,
   Globe,
-  ArrowLeft
+  ArrowLeft,
+  LogOut
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import LoaderOverlay from "./Loader";
+import { logoutRequest } from "../utils/logout";
+import ThemeToggle from "./ThemeToggle";
+import { useProAlert } from "../context/ProAlertContext";
+import { handleUnauthorized } from "../utils/handleUnauthorized";
+interface QuizOption {
+  id: number;
+  text: string;
+}
+
+interface QuizQuestion {
+  id: number;
+  prompt: string;
+  options: QuizOption[];
+  correctOptionId: number;
+  explanation: string;
+}
+
 interface Lesson {
   id: number;
   title: string;
@@ -26,7 +45,9 @@ interface Lesson {
   content: string | null;
   duration: number;
   unitId:number;
-  file: File | null
+  file: File | null;
+  position?: number;
+  quizQuestions?: QuizQuestion[];
 }
 
 interface Unit {
@@ -35,6 +56,7 @@ interface Unit {
   description: string;
   lessons: Lesson[];
   isExpanded: boolean;
+  position?: number;
 }
 
 interface CourseData {
@@ -51,6 +73,7 @@ interface CourseData {
 const CourseCreation = () => {
   const { id } = useParams();
  const navigate = useNavigate()
+  const proAlert = useProAlert();
   const [isVisible, setIsVisible] = useState(false);
    const [publicc, setPublic] = useState("true");
    const [community, setCommunity] = useState("true");
@@ -71,10 +94,252 @@ const CourseCreation = () => {
     
   ]);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const pendingNavigation = useRef<(() => void | Promise<void>) | null>(null);
+
+  const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
+
+  const createQuizOption = (text: string): QuizOption => ({
+    id: generateId(),
+    text,
+  });
+
+  const createQuizQuestion = (): QuizQuestion => {
+    const optionA = createQuizOption("Option A");
+    const optionB = createQuizOption("Option B");
+    return {
+      id: generateId(),
+      prompt: "New question",
+      options: [optionA, optionB],
+      correctOptionId: optionA.id,
+      explanation: "",
+    };
+  };
+
+  const ensureQuizLesson = (lesson: Lesson): Lesson => {
+    if (lesson.type !== "quiz") {
+      const { quizQuestions, ...rest } = lesson;
+      return rest as Lesson;
+    }
+
+    if (lesson.quizQuestions && lesson.quizQuestions.length > 0) {
+      return lesson;
+    }
+
+    return {
+      ...lesson,
+      quizQuestions: [createQuizQuestion()],
+    };
+  };
+
+  const replaceLesson = (updatedLesson: Lesson) => {
+    setSelectedLesson(updatedLesson);
+    setUnits((prevUnits) =>
+      prevUnits.map((unit) => ({
+        ...unit,
+        lessons: unit.lessons.map((lesson) =>
+          lesson.id === updatedLesson.id ? updatedLesson : lesson
+        ),
+      }))
+    );
+  };
+
+  const mutateQuizQuestions = (
+    mutator: (questions: QuizQuestion[]) => QuizQuestion[]
+  ) => {
+    if (!selectedLesson || selectedLesson.type !== "quiz") {
+      return;
+    }
+
+    const existingQuestions = selectedLesson.quizQuestions ?? [];
+    const updatedQuestions = mutator(existingQuestions).map((question) => ({
+      ...question,
+      options: question.options.map((option) => ({ ...option })),
+    }));
+
+    const updatedLesson: Lesson = {
+      ...selectedLesson,
+      quizQuestions: updatedQuestions,
+      content: null,
+      file: null,
+    };
+
+    replaceLesson(ensureQuizLesson(updatedLesson));
+  };
+
+  const addQuizQuestion = () => {
+    mutateQuizQuestions((questions) => [...questions, createQuizQuestion()]);
+  };
+
+  const removeQuizQuestion = (questionId: number) => {
+    mutateQuizQuestions((questions) => {
+      if (questions.length <= 1) {
+        return questions;
+      }
+      return questions.filter((question) => question.id !== questionId);
+    });
+  };
+
+  const updateQuizQuestion = (questionId: number, prompt: string) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId ? { ...question, prompt } : question
+      )
+    );
+  };
+
+  const updateQuizExplanation = (questionId: number, explanation: string) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId ? { ...question, explanation } : question
+      )
+    );
+  };
+
+  const addQuizOption = (questionId: number) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId
+          ? {
+              ...question,
+              options: [
+                ...question.options,
+                createQuizOption(`Option ${String.fromCharCode(65 + question.options.length)}`),
+              ],
+            }
+          : question
+      )
+    );
+  };
+
+  const updateQuizOption = (
+    questionId: number,
+    optionId: number,
+    text: string
+  ) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId
+          ? {
+              ...question,
+              options: question.options.map((option) =>
+                option.id === optionId ? { ...option, text } : option
+              ),
+            }
+          : question
+      )
+    );
+  };
+
+  const removeQuizOption = (questionId: number, optionId: number) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) => {
+        if (question.id !== questionId) {
+          return question;
+        }
+
+        if (question.options.length <= 2) {
+          return question;
+        }
+
+        const filteredOptions = question.options.filter(
+          (option) => option.id !== optionId
+        );
+
+        const nextCorrectOptionId =
+          question.correctOptionId === optionId && filteredOptions.length > 0
+            ? filteredOptions[0].id
+            : question.correctOptionId;
+
+        return {
+          ...question,
+          options: filteredOptions,
+          correctOptionId: nextCorrectOptionId,
+        };
+      })
+    );
+  };
+
+  const setCorrectOption = (questionId: number, optionId: number) => {
+    mutateQuizQuestions((questions) =>
+      questions.map((question) =>
+        question.id === questionId
+          ? { ...question, correctOptionId: optionId }
+          : question
+      )
+    );
+  };
 
   useEffect(() => {
     setIsVisible(true);
   }, []);
+
+  const hasUnsavedChanges = Boolean(
+    courseData.title ||
+    courseData.description ||
+    courseData.language ||
+    courseData.category ||
+    courseData.estimatedHours ||
+    courseData.targetAudience ||
+    info ||
+    units.length > 0
+  );
+
+  useEffect(() => {
+    const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', beforeUnloadHandler);
+    return () => window.removeEventListener('beforeunload', beforeUnloadHandler);
+  }, [hasUnsavedChanges]);
+
+  const requestNavigation = (navigateFn: () => void | Promise<void>) => {
+    if (hasUnsavedChanges) {
+      pendingNavigation.current = navigateFn;
+      setShowLeaveModal(true);
+    } else {
+      navigateFn();
+    }
+  };
+
+  const confirmNavigation = () => {
+    const nav = pendingNavigation.current;
+    pendingNavigation.current = null;
+    setShowLeaveModal(false);
+    if (nav) {
+      Promise.resolve(nav()).catch((error) => {
+        console.error('Navigation action failed', error);
+      });
+    }
+  };
+
+  const cancelNavigation = () => {
+    pendingNavigation.current = null;
+    setShowLeaveModal(false);
+  };
+
+  const handleLogoClick = () => {
+    requestNavigation(() => navigate('/dashboard'));
+  };
+
+  const handleLogoutClick = () => {
+    requestNavigation(async () => {
+      setLoggingOut(true);
+      const success = await logoutRequest();
+      setLoggingOut(false);
+
+      if (success) {
+        navigate('/signIn');
+      } else {
+        proAlert.error('Unable to log out. Please try again.');
+      }
+    });
+  };
 
   const steps = [
     { id: 1, title: "Course Info", icon: BookOpen },
@@ -91,22 +356,31 @@ const CourseCreation = () => {
       title: `Unit ${units.length + 1}`,
       description: "",
       lessons: [],
-      isExpanded: true
+      isExpanded: true,
+      position: units.length
     };
     setUnits([...units, newUnit]);
   };
 
   const addLesson = (unitId: number, lessonType: string = "text", autoSelect: boolean = false) => {
     const newLessonId = Date.now(); // Use timestamp for unique ID
-    const newLesson: Lesson = {
+    let newLesson: Lesson = {
       id: newLessonId,
       title: `${lessonType.charAt(0).toUpperCase() + lessonType.slice(1)} Lesson`,
       type: lessonType,
-      content: "",
+      content: lessonType === "quiz" ? null : "",
       duration: 5,
       unitId:unitId,
-      file: null
+      file: null,
+      position: units.find((unit) => unit.id === unitId)?.lessons.length ?? 0,
     };
+
+    if (lessonType === "quiz") {
+      newLesson = {
+        ...newLesson,
+        quizQuestions: [createQuizQuestion()],
+      };
+    }
 
     setUnits(units.map(unit => 
       unit.id === unitId 
@@ -144,19 +418,56 @@ const CourseCreation = () => {
     ));
   };
 
-  const updateSelectedLesson = (field: keyof Lesson, value: string | number) => {
-    if (selectedLesson) {
-      const updatedLesson = { ...selectedLesson, [field]: value };
-      setSelectedLesson(updatedLesson);
-      
-      // Update the lesson in the units array
-      setUnits(units.map(unit => ({
-        ...unit,
-        lessons: unit.lessons.map(lesson => 
-          lesson.id === selectedLesson.id ? updatedLesson : lesson
-        )
-      })));
+  const updateSelectedLesson = (field: keyof Lesson, value: string | number | File | null) => {
+    if (!selectedLesson) {
+      return;
     }
+
+    let updatedLesson: Lesson = { ...selectedLesson };
+
+    if (field === "type" && typeof value === "string") {
+      updatedLesson = {
+        ...updatedLesson,
+        type: value,
+        file: null,
+        content: value === "quiz" ? null : updatedLesson.content ?? "",
+      };
+      updatedLesson = ensureQuizLesson(updatedLesson);
+    } else if (field === "content") {
+      if (updatedLesson.type === "quiz") {
+        return;
+      }
+      updatedLesson = {
+        ...updatedLesson,
+        content: typeof value === "string" ? value : updatedLesson.content,
+      };
+    } else if (field === "duration") {
+      updatedLesson = {
+        ...updatedLesson,
+        duration: typeof value === "number" ? value : updatedLesson.duration,
+      };
+    } else if (field === "file") {
+      updatedLesson = {
+        ...updatedLesson,
+        file: (value as File | null) ?? null,
+        content: updatedLesson.type === "quiz" ? null : updatedLesson.content,
+      };
+    } else {
+      updatedLesson = {
+        ...updatedLesson,
+        [field]: value,
+      } as Lesson;
+    }
+
+    if (updatedLesson.type === "quiz") {
+      updatedLesson = ensureQuizLesson(updatedLesson);
+      updatedLesson = {
+        ...updatedLesson,
+        file: null,
+      };
+    }
+
+    replaceLesson(updatedLesson);
   };
    const [progress, setProgress] = useState<number>(0);
 
@@ -175,7 +486,9 @@ const CourseCreation = () => {
         },
       });
 
-      return res.data.fileUrl;
+      const fileUrl: string = res.data.fileUrl;
+      if (!fileUrl) return null;
+      return fileUrl.startsWith('http') ? fileUrl : `${config.BACKEND_URL}${fileUrl}`;
     } catch (err) {
       console.error("Upload failed:", err);
       return null;
@@ -184,23 +497,23 @@ const CourseCreation = () => {
   const createCourse = async () => {
   // Basic validation
   if (!courseData.title || !courseData.description || !courseData.language) {
-    alert("Please fill in all required fields.");
+    proAlert.info("Please fill in all required fields.");
     return;
   }
 // upload files first
   await Promise.all(
-  units.map(async (unit) => {
-    await Promise.all(
-      unit.lessons.map(async (lesson) => {
-        if (lesson.file) {
-          const fileUrl = await uploadLessonFile(lesson.file);
-          lesson.content = fileUrl; // <--- update lesson content directly
-        }
-      })
-    );
-    return unit; // return updated unit with modified lessons
-  })
-);
+    units.map(async (unit) => {
+      await Promise.all(
+        unit.lessons.map(async (lesson) => {
+          if (lesson.file) {
+            const fileUrl = await uploadLessonFile(lesson.file);
+            lesson.content = fileUrl; // <--- update lesson content directly
+          }
+        })
+      );
+      return unit; // return updated unit with modified lessons
+    })
+  );
   // Transform your state into the format expected by your backend
   const payload = {
     title: courseData.title,
@@ -214,14 +527,21 @@ const CourseCreation = () => {
     discussions: discussions, // Set default or get from user
     info: info,
     instructorId: id || "some-default-id", // Set default or get from user
-    words: units.flatMap(unit =>
-      unit.lessons.map(lesson => ({
+    units: units.map((unit, unitIndex) => ({
+      title: unit.title,
+      description: unit.description,
+      position: typeof unit.position === "number" ? unit.position : unitIndex,
+      lessons: unit.lessons.map((lesson, lessonIndex) => ({
         title: lesson.title,
         type: lesson.type,
-        duration: lesson.duration.toString(),
-        content: lesson.content
+        duration: Number(lesson.duration ?? 0),
+        content:
+          lesson.type === "quiz"
+            ? JSON.stringify({ questions: lesson.quizQuestions ?? [] })
+            : lesson.content,
+        position: typeof lesson.position === "number" ? lesson.position : lessonIndex
       }))
-    )
+    }))
 
   };
  
@@ -234,17 +554,21 @@ const CourseCreation = () => {
       body: JSON.stringify(payload)
     });
 
+    if (handleUnauthorized(response, navigate, proAlert)) {
+      return;
+    }
+
     if (response.ok) {
-      alert("Course created successfully!");
+      proAlert.success("Course created successfully!");
      navigate(`/dashboard`)
     } else {
       const errorData = await response.json();
       console.error("Failed to create course:", errorData);
-      alert("Failed to create course.");
+      proAlert.error("Failed to create course.");
     }
   } catch (error) {
     console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+    proAlert.error("Something went wrong while creating the course.");
   }
 };
 
@@ -593,17 +917,20 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
 {/* Content */}
 <div>
 <label className="block text-white font-medium mb-2">Lesson Content</label>
-{selectedLesson.file === null ? (
+{selectedLesson.type === "quiz" ? (
+  <div className="rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 p-4 text-sm text-cyan-200">
+    Quiz content is managed in the Quiz Questions section below. Add questions and answer choices to build an interactive experience.
+  </div>
+) : selectedLesson.file === null ? (
   <textarea
     rows={12}
     placeholder="Enter your lesson content here..."
-    value={selectedLesson.content ? selectedLesson.content:""}
+    value={selectedLesson.content ? selectedLesson.content : ""}
     onChange={(e) => updateSelectedLesson("content", e.target.value)}
     className="w-full bg-slate-800/50 border border-white/10 rounded-lg p-4 text-white resize-none"
   />
 ) : (
   <div className="w-full">
-
     {selectedLesson?.file?.type.startsWith("image/") ? (
       <img
         src={URL.createObjectURL(selectedLesson.file)}
@@ -634,14 +961,115 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
 
 {/* Quiz handling (if type === quiz) */}
 {selectedLesson.type === "quiz" && (
-<div className="space-y-4">
-<h4 className="text-white font-medium">Quiz Questions</h4>
-{/* TODO: Add proper quiz state handling */}
-<button className="flex items-center space-x-2 text-cyan-400 hover:text-cyan-300">
-<Plus size={16} />
-<span className="text-sm">Add Question</span>
-</button>
-</div>
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <h4 className="text-white font-medium">Quiz Builder</h4>
+      <button
+        type="button"
+        onClick={addQuizQuestion}
+        className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20"
+      >
+        <Plus size={16} /> Add Question
+      </button>
+    </div>
+
+    <div className="space-y-4">
+      {selectedLesson.quizQuestions?.map((question, index) => (
+        <div
+          key={question.id}
+          className="space-y-4 rounded-lg border border-white/10 bg-slate-900/60 p-4"
+        >
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/20 text-sm font-semibold text-cyan-200">
+                {index + 1}
+              </span>
+              <span className="text-white font-medium">Question</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => addQuizOption(question.id)}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1 text-xs text-white/80 hover:bg-white/10"
+                disabled={question.options.length >= 6}
+              >
+                <Plus size={14} /> Option
+              </button>
+              <button
+                type="button"
+                onClick={() => removeQuizQuestion(question.id)}
+                className="inline-flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-40"
+                disabled={(selectedLesson.quizQuestions?.length ?? 0) <= 1}
+              >
+                <Trash2 size={14} /> Remove
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-white/80">Prompt</label>
+              <textarea
+                rows={2}
+                value={question.prompt}
+                onChange={(e) => updateQuizQuestion(question.id, e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-white focus:border-cyan-500/40 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-white/80">Answer choices</span>
+              {question.options.map((option, optionIndex) => (
+                <div
+                  key={option.id}
+                  className="flex flex-col gap-2 rounded-lg border border-white/10 bg-slate-900/70 p-3 md:flex-row md:items-center"
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name={`correct-${question.id}`}
+                      checked={question.correctOptionId === option.id}
+                      onChange={() => setCorrectOption(question.id, option.id)}
+                      className="h-4 w-4 accent-cyan-400"
+                    />
+                    <span className="text-xs uppercase tracking-wide text-white/60">
+                      {String.fromCharCode(65 + optionIndex)}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={option.text}
+                    onChange={(e) => updateQuizOption(question.id, option.id, e.target.value)}
+                    className="flex-1 rounded-lg border border-white/10 bg-transparent px-3 py-2 text-white focus:border-cyan-500/40 focus:outline-none"
+                    placeholder="Enter option text"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeQuizOption(question.id, option.id)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10 disabled:opacity-40"
+                    disabled={question.options.length <= 2}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-white/80">Feedback message (shown after answering)</label>
+              <textarea
+                rows={2}
+                value={question.explanation}
+                onChange={(e) => updateQuizExplanation(question.id, e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-white focus:border-cyan-500/40 focus:outline-none"
+                placeholder="Explain why the answer is correct or provide tips"
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
 )}
 </div>
 ) : (
@@ -751,18 +1179,32 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative">
+      {loggingOut && <LoaderOverlay message="Logging out..." />}
       <header className={`bg-slate-900/80 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              <button
+                onClick={handleLogoClick}
+                type="button"
+                className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+              >
                 OpenLingua
-              </div>
+              </button>
              
             </div>
-            
-            
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={handleLogoutClick}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-all"
+              >
+                <LogOut size={16} />
+                Log out
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -828,9 +1270,34 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
               </button>
             )}
           </div>
-        </div>
       </div>
     </div>
+
+      {showLeaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-slate-900/90 border border-white/15 rounded-2xl px-8 py-6 max-w-md w-full text-center shadow-xl">
+            <h3 className="text-xl font-semibold text-white mb-3">Leave this page?</h3>
+            <p className="text-sm text-gray-300 mb-6">
+              You have unsaved changes. Navigating away now might cause you to lose your progress.
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={cancelNavigation}
+                className="px-4 py-2 text-sm font-medium text-gray-300 bg-white/10 rounded-lg hover:bg-white/15 transition-colors"
+              >
+                Stay here
+              </button>
+              <button
+                onClick={confirmNavigation}
+                className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg hover:opacity-90 transition-opacity"
+              >
+                Leave page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+  </div>
   );
 };
 
