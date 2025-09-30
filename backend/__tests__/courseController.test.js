@@ -60,22 +60,19 @@ describe('courseController', () => {
   });
 
   describe('createCourse', () => {
-    test('creates course and words then returns 201', async () => {
+    test('creates course then returns 201', async () => {
       const req = { body: {
         title: 'Course', description: 'Desc', language: 'en', level: 'A1', category: 'cat', hours: 5,
-        public: true, community: true, discussions: true, info: 'i', instructorId: 'u1',
-        words: [{ title: 'w1', type: 'n', duration: 1, content: 'c1' }]
+        public: true, community: true, discussions: true, info: 'i', instructorId: 'u1'
       } };
       const res = mockRes();
       prisma.course.create.mockResolvedValue({ id: 'c1' });
-      prisma.word.create.mockResolvedValue({});
 
       await controller.createCourse(req, res);
 
       expect(prisma.course.create).toHaveBeenCalled();
-      expect(prisma.word.create).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({ message: 'Course created successfully' });
+      expect(res.json).toHaveBeenCalledWith({ message: 'Course created successfully', course: { id: 'c1' } });
     });
   });
 

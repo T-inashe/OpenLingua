@@ -45,7 +45,7 @@ const createCourse = async (req, res) => {
       level,
       category,
       hours,
-      public, // Or use a toggle if you have one
+      public: isPublic, // Or use a toggle if you have one
       community,
       discussions, // Set default or get from user
       info,
@@ -70,7 +70,7 @@ const createCourse = async (req, res) => {
           info,
         language,
         level,
-        public,
+        public: isPublic,
         units: {
           create: units.map((unit, unitIndex) => ({
             title: unit.title,

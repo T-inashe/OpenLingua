@@ -2,6 +2,7 @@
 jest.mock('multer', () => {
   const multerFn = () => ({ single: () => (req, res, next) => next() });
   multerFn.diskStorage = () => ({ /* noop storage */ });
+  multerFn.memoryStorage = () => ({ /* noop memory storage */ });
   return multerFn;
 }, { virtual: true });
 
