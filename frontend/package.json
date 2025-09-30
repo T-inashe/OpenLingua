@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "jest __tests__/quiz/ __tests__/services/ __tests__/ui/ __tests__/layout/ __tests__/community/ __tests__/auth/ --watchAll=false --verbose=false"
+    "test": "jest __tests__/quiz/ __tests__/services/ __tests__/ui/ __tests__/layout/ __tests__/community/ __tests__/auth/ --watchAll=false --verbose=false --coverage"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.16",
