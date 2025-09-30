@@ -10,6 +10,7 @@ import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, He
   title: string;
   content: string;
   done: boolean;
+  type: string;
 };
 
 type Review = {
@@ -62,9 +63,6 @@ const [forums, setForums] = useState<Forum[]>([]);
 //const [lessons, setLessons] = useState<Lesson | null>(null);
   // Example lessons for Zulu course
   const [lessons, setLessons] = useState<Lesson[]>([
-    { title: "Lesson 1: Greetings", content: "Learn how to greet in Zulu (Sawubona, Unjani)", done: false },
-    { title: "Lesson 2: Gratitude", content: "Express thanks (Ngiyabonga)", done: false },
-    { title: "Lesson 3: Basic Responses", content: "Yes (Yebo), No (Cha)", done: false },
   ]);
 
   const [input, setInput] = useState("");
@@ -400,8 +398,23 @@ Welcome To {course?.title}
 {
 course&& (course.words.map((l, i) => (
 <li key={i} className="text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5">
-<strong className="text-white">{l.title}</strong>
-<p>{l.content}</p>
+<strong className="text-white">{l.type}</strong>
+{
+  l.type === "text" ? (<video
+        controls
+        className="w-full max-h-[400px] rounded-lg"
+        src={`${config.BACKEND_URL}${l.content}`}
+      />) : (l.type === "image" ? (<img
+        src={`${config.BACKEND_URL}${l.content}`}
+        alt="Preview"
+        className="max-w-full max-h-[400px] rounded-lg"
+      />):(l.type === "audio" ? (<audio
+        controls
+        className="w-full"
+        src={`${config.BACKEND_URL}${l.content}`}
+      />):(<p>{l.content}</p>)) )
+}
+
 <button onClick={() => toggleLessonDone(i)} className={`mt-2 px-3 py-1 rounded-lg text-sm ${l.type ==="text" ? "bg-green-600" : "bg-cyan-600"} text-white`}>
 {l.type ==="text" ? "Done" : "Mark as Done"}
 </button>

@@ -90,5 +90,5 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     res.status(500).json({ error: "File upload failed" });
   }
 });
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 module.exports = app;

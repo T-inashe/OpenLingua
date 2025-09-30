@@ -201,7 +201,8 @@ const JoinCourse = async (course: Courses) => {
 
     if (response.ok) {
      alert("Course joined successfully!");
-     navigate(`/course/${course.id}`)
+     user ? (navigate(`/course/${course.id}/${user.id}`)):null
+     
     } else {
       const errorData = await response.json();
       console.error("Failed to join course:", errorData);
