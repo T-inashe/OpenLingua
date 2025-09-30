@@ -1,197 +1,217 @@
-import { useState, useEffect } from "react";
-import { Search, Plus, BookOpen, TrendingUp, Users, Star, Clock, Award, Settings, Bell } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Search, Plus, BookOpen, TrendingUp, Users, Star, Award, Settings, Bell, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import config from "../config";
+import LoaderOverlay from "./Loader";
+import { logoutRequest } from "../utils/logout";
+import ThemeToggle from "./ThemeToggle";
+import { useProAlert } from "../context/ProAlertContext";
+import { handleUnauthorized } from "../utils/handleUnauthorized";
+
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState('');
   const [init, setInit] = useState('');
   const [progress, setProgress] = useState('');
   const [isVisible, setIsVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [mycourses, setMycourses] = useState<Courses[]>([]);
-const [coursess, setCoursess] = useState<Courses[]>([]);
-const [joined, setJoined] = useState<Joined[]>([]);
-const [joinedall, setJoinedall] = useState<Joined[]>([]);
-const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
+  const [coursess, setCoursess] = useState<Courses[]>([]);
+  const [joined, setJoined] = useState<Joined[]>([]);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  // const [joinedall, setJoinedall] = useState<Joined[]>([]);
+  // const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
+
+  const navigate = useNavigate();
+  const proAlert = useProAlert();
 
   interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  // Add other fields if needed (like avatar, googleId, etc.)
-}
-interface Courses {
-  id: string;
-  title: string;
-  createdAt: string;
-  description: string;
-  level: string;
-  // Add other fields if needed (like avatar, googleId, etc.)
-}
-interface Joined {
-  id: string;
-  progress: string;
-  // Add other fields if needed (like avatar, googleId, etc.)
-}
-const getUser = async () => {
-//  setLod('yes')
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
-    });
-//alert(res.json())
-    if (!res.ok) {
-      throw new Error("Failed to fetch courses");
-    }
-
-    const data = await res.json();
-
-  setUser(data.user);  // Use the courses array
-setInit(getInitials(data.user.name))
-getMyCourses(data.user)
-getJoinedCourses(data.user)
-   // setLod('no')
-    // fetchCourses(); // Uncomment if needed to refresh separately
-  } catch (error) {
-    console.error("Error fetching courses:", error);
+    id: string;
+    name: string;
+    email: string;
+    avatar: string;
+    // Add other fields if needed (like avatar, googleId, etc.)
   }
-};
-useEffect(()=>{
-getUser()
-},[])
-
- const getMyCourses = async (user: User) => {
-  // Basic validation
-
-
-  // Transform your state into the format expected by your backend
-  const payload = {
-    userId: user?.id,
-
-  };
- 
-
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/courses/getcourses/${user?.id}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-     
-    });
-
-    if (!res.ok) {
-      console.log(res.json())
-      throw new Error("Failed to fetch my courses");
-    }
-
-    const data = await res.json();
-   // alert(JSON.stringify(data))
-if (Array.isArray(data.courses)) {
-  setMycourses(data.courses);  // Use the courses array
-} else {
-  console.error("Expected an array but got:", data);
-  //setMycourses([]); // fallback to empty array to avoid crashes
-} 
-  } catch (error) {
-    console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+  interface Courses {
+    id: string;
+    title: string;
+    createdAt: string;
+    description: string;
+    level: string;
+    // Add other fields if needed (like avatar, googleId, etc.)
   }
-};
-
-
-
-const getCourses = async () => {
-  // Basic validation
-
-
-  // Transform your state into the format expected by your backend
- 
- 
-
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/courses/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch courses");
-    }
-
-    const data = await res.json();
-   // alert(JSON.stringify(data))
-if (Array.isArray(data.courses)) {
-  setCoursess(data.courses);  // Use the courses array
-} else {
-  console.error("Expected an array but got:", data);
-  //setMycourses([]); // fallback to empty array to avoid crashes
-} 
-  } catch (error) {
-    console.error("Error creating course:", error);
-    alert("Something went wrong while creating the course.");
+  interface Joined {
+    id: string;
+    progress: string;
+    // Add other fields if needed (like avatar, googleId, etc.)
   }
-};
 
-useEffect(()=>{
- getCourses()
-},[])
+  const getUser = async () => {
+    try {
+      const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+      });
 
-
-const getJoinedCourses = async (user: User) => {
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/courses/getjoinedcourses/${user.id}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch courses");
-    }
-
-    const data = await res.json();
-
-    if (Array.isArray(data.courses)) {
-      setJoined(data.courses);
-
-      if (data.courses.length === 0) {
-        setProgress("0%");
-      } else {
-        const courses: Joined[] = data.courses;
-        const total = courses.reduce<number>((sum, course) => {
-          const num = parseFloat(course.progress || "0"); // Handle undefined/null
-          return sum + (isNaN(num) ? 0 : num);
-        }, 0);
-
-        const average = total / data.courses.length; // ✅ Use data.courses directly
-        setProgress(`${average.toFixed(2)}%`);
+      if (handleUnauthorized(res, navigate, proAlert)) {
+        return;
       }
-    } else {
-      console.error("Expected an array but got:", data);
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch current user");
+      }
+
+      const data = await res.json();
+
+      setUser(data.user);
+      setInit(getInitials(data.user.name));
+
+      await Promise.all([
+        getMyCourses(data.user),
+        getJoinedCourses(data.user)
+      ]);
+    } catch (error) {
+      console.error("Error fetching user:", error);
     }
-  } catch (error) {
-    console.error("Error fetching joined courses:", error);
-    alert("Something went wrong while fetching the joined courses.");
-  }
-};
-
-            const navigate = useNavigate()
-const JoinCourse = async (course: Courses) => {
-  // Basic validation
-
-
-  // Transform your state into the format expected by your backend
-  const payload = {
-    userId: user?.id,
-    courseId: course.id,
-
   };
- 
 
-  try {
+  const getMyCourses = async (user: User) => {
+    // Basic validation
+
+    // Transform your state into the format expected by your backend
+    // const payload = {
+    //   userId: user?.id,
+    // };
+
+    try {
+      const res = await fetch(`${config.BACKEND_URL}/api/courses/getcourses/${user?.id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (handleUnauthorized(res, navigate, proAlert)) {
+        return;
+      }
+
+      if (!res.ok) {
+        console.log(res.json())
+        throw new Error("Failed to fetch my courses");
+      }
+
+      const data = await res.json();
+      // alert(JSON.stringify(data))
+      if (Array.isArray(data.courses)) {
+        setMycourses(data.courses);  // Use the courses array
+      } else {
+        console.error("Expected an array but got:", data);
+        //setMycourses([]); // fallback to empty array to avoid crashes
+      }
+    } catch (error) {
+      console.error("Error creating course:", error);
+      proAlert.error("Something went wrong while loading your courses.");
+    }
+  };
+
+  const getCourses = async () => {
+    // Basic validation
+
+    // Transform your state into the format expected by your backend
+
+    try {
+      const res = await fetch(`${config.BACKEND_URL}/api/courses/`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (handleUnauthorized(res, navigate, proAlert)) {
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch courses");
+      }
+
+      const data = await res.json();
+      // alert(JSON.stringify(data))
+      if (Array.isArray(data.courses)) {
+        setCoursess(data.courses);
+      } else {
+        console.error("Expected an array but got:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      proAlert.error("Something went wrong while loading courses.");
+    }
+  };
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setIsPageLoading(true);
+        await Promise.all([getUser(), getCourses()]);
+      } finally {
+        setIsPageLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+
+  const getJoinedCourses = async (user: User) => {
+    try {
+      const res = await fetch(`${config.BACKEND_URL}/api/courses/getjoinedcourses/${user.id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (handleUnauthorized(res, navigate, proAlert)) {
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch courses");
+      }
+
+      const data = await res.json();
+
+      if (Array.isArray(data.courses)) {
+        setJoined(data.courses);
+
+        if (data.courses.length === 0) {
+          setProgress("0%");
+        } else {
+          const courses: Joined[] = data.courses;
+          const total = courses.reduce<number>((sum, course) => {
+            const num = parseFloat(course.progress || "0"); // Handle undefined/null
+            return sum + (isNaN(num) ? 0 : num);
+          }, 0);
+
+          const average = total / data.courses.length; // ✅ Use data.courses directly
+          setProgress(`${average.toFixed(2)}%`);
+        }
+      } else {
+        console.error("Expected an array but got:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching joined courses:", error);
+      proAlert.error("Something went wrong while fetching the joined courses.");
+    }
+  };
+
+  const JoinCourse = async (course: Courses): Promise<boolean> => {
+    if (!user) {
+      proAlert.info("Please sign in before joining a course.");
+      return false;
+    }
+
+    const payload = {
+      userId: user.id,
+      courseId: course.id,
+    };
+
+    try {
     const response = await fetch(`${config.BACKEND_URL}/api/courses/${course.id}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -199,100 +219,108 @@ const JoinCourse = async (course: Courses) => {
       body: JSON.stringify(payload)
     });
 
-    if (response.ok) {
-     alert("Course joined successfully!");
-     user ? (navigate(`/course/${course.id}/${user.id}`)):null
-     
-    } else {
-      const errorData = await response.json();
-      console.error("Failed to join course:", errorData);
-      alert("Failed to join course.");
-    }
-  } catch (error) {
-    console.error("Error joining course:", error);
-    alert("Something went wrong while joining the course.");
-  }
-};
+      if (handleUnauthorized(response, navigate, proAlert)) {
+        return false;
+      }
 
-function getInitials(name: string): string {
-  if (!name) return '';
-  const words = name.trim().split(' ');
-  if (words.length === 1) return words[0].charAt(0).toUpperCase();
-  return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
-}
+      if (response.ok) {
+        proAlert.success("Course joined successfully!");
+        await getJoinedCourses(user);
+        navigate(`/course/${course.id}`);
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to join course:", errorData);
+        proAlert.error("Failed to join course.");
+      }
+    } catch (error) {
+      console.error("Error joining course:", error);
+      proAlert.error("Something went wrong while joining the course.");
+    }
+
+    return false;
+  };
+
+  function getInitials(name: string): string {
+    if (!name) return '';
+    const words = name.trim().split(' ');
+    if (words.length === 1) return words[0].charAt(0).toUpperCase();
+    return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+  }
+
   useEffect(() => {
     setIsVisible(true);
   }, []);
 
   // Sample data
-  const userStats = {
-    coursesEnrolled: 8,
-    coursesCreated: 3,
-    totalProgress: 64,
-    currentStreak: 12
-  };
+  // const userStats = {
+  //   coursesEnrolled: 8,
+  //   coursesCreated: 3,
+  //   totalProgress: 64,
+  //   currentStreak: 12
+  // };
 
-  const courses = [
-    {
-      id: 1,
-      title: "Advanced isiXhosa Grammar",
-      description: "Master complex grammatical structures and cultural nuances",
-      language: "isiXhosa",
-      progress: 78,
-      students: 245,
-      rating: 4.8,
-      category: "Grammar",
-      isCreated: true,
-      lastActivity: "2 hours ago",
-      difficulty: "Advanced"
-    },
-    {
-      id: 2,
-      title: "Swahili for Business",
-      description: "Professional communication in East African markets",
-      language: "Swahili",
-      progress: 45,
-      students: 189,
-      rating: 4.6,
-      category: "Business",
-      isCreated: false,
-      lastActivity: "Yesterday",
-      difficulty: "Intermediate"
-    },
-    {
-      id: 3,
-      title: "Shona Poetry & Literature",
-      description: "Explore the rich literary tradition through classic works",
-      language: "Shona",
-      progress: 92,
-      students: 156,
-      rating: 4.9,
-      category: "Literature",
-      isCreated: true,
-      lastActivity: "3 days ago",
-      difficulty: "Advanced"
-    },
-    {
-      id: 4,
-      title: "Beginner Xitsonga Conversations",
-      description: "Essential phrases for everyday communication",
-      language: "Xitsonga",
-      progress: 23,
-      students: 78,
-      rating: 4.5,
-      category: "Conversation",
-      isCreated: false,
-      lastActivity: "1 week ago",
-      difficulty: "Beginner"
-    }
-  ];
+  // const courses = [
+  //   {
+  //     id: 1,
+  //     title: "Advanced isiXhosa Grammar",
+  //     description: "Master complex grammatical structures and cultural nuances",
+  //     language: "isiXhosa",
+  //     progress: 78,
+  //     students: 245,
+  //     rating: 4.8,
+  //     category: "Grammar",
+  //     isCreated: true,
+  //     lastActivity: "2 hours ago",
+  //     difficulty: "Advanced"
+  //   },
+  //   {
+  //     id: 2,
+  //     title: "Swahili for Business",
+  //     description: "Professional communication in East African markets",
+  //     language: "Swahili",
+  //     progress: 45,
+  //     students: 189,
+  //     rating: 4.6,
+  //     category: "Business",
+  //     isCreated: false,
+  //     lastActivity: "Yesterday",
+  //     difficulty: "Intermediate"
+  //   },
+  //   {
+  //     id: 3,
+  //     title: "Shona Poetry & Literature",
+  //     description: "Explore the rich literary tradition through classic works",
+  //     language: "Shona",
+  //     progress: 92,
+  //     students: 156,
+  //     rating: 4.9,
+  //     category: "Literature",
+  //     isCreated: true,
+  //     lastActivity: "3 days ago",
+  //     difficulty: "Advanced"
+  //   },
+  //   {
+  //     id: 4,
+  //     title: "Beginner Xitsonga Conversations",
+  //     description: "Essential phrases for everyday communication",
+  //     language: "Xitsonga",
+  //     progress: 23,
+  //     students: 78,
+  //     rating: 4.5,
+  //     category: "Conversation",
+  //     isCreated: false,
+  //     lastActivity: "1 week ago",
+  //     difficulty: "Beginner"
+  //   }
+  // ];
 
-  const recentActivity = [
-    { action: "Completed lesson", course: "Advanced isiXhosa Grammar", time: "2 hours ago" },
-    { action: "Course published", course: "Shona Poetry & Literature", time: "1 day ago" },
-    { action: "New student enrolled", course: "Advanced isiXhosa Grammar", time: "2 days ago" },
-    { action: "Quiz completed", course: "Swahili for Business", time: "3 days ago" }
-  ];
+  // const recentActivity = [
+  //   { action: "Completed lesson", course: "Advanced isiXhosa Grammar", time: "2 hours ago" },
+  //   { action: "Course published", course: "Shona Poetry & Literature", time: "1 day ago" },
+  //   { action: "New student enrolled", course: "Advanced isiXhosa Grammar", time: "2 days ago" },
+  //   { action: "Quiz completed", course: "Swahili for Business", time: "3 days ago" }
+  // ];
 
   const sidebarItems = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
@@ -302,11 +330,11 @@ function getInitials(name: string): string {
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
-  const filteredCourses = courses.filter(course =>
-    course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // const filteredCourses = courses.filter(course =>
+  //   course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //   course.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //   course.category.toLowerCase().includes(searchQuery.toLowerCase())
+  // );
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -317,17 +345,69 @@ function getInitials(name: string): string {
     }
   };
 
+  const handleSidebarItemClick = (itemId: string) => {
+    if (itemId === 'community') {
+      navigate('/community');
+    } else {
+      setActiveTab(itemId);
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsPageLoading(true);
+    const success = await logoutRequest();
+    setIsPageLoading(false);
+
+    if (success) {
+      setUser(null);
+      setInit('');
+      setMycourses([]);
+      setCoursess([]);
+      setJoined([]);
+      navigate('/signIn');
+    } else {
+      proAlert.error('Unable to log out. Please try again.');
+    }
+  };
+
+  const filteredCourses = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const normalizedDifficulty = difficultyFilter.trim().toLowerCase();
+
+    return coursess.filter((course) => {
+      const matchesDifficulty = !normalizedDifficulty
+        || (course.level ? course.level.toLowerCase() === normalizedDifficulty : false);
+
+      if (!normalizedSearch) {
+        return matchesDifficulty;
+      }
+
+      const searchableFields = [course.title, course.description, course.level];
+      const matchesSearch = searchableFields.some((field) =>
+        typeof field === 'string' && field.toLowerCase().includes(normalizedSearch)
+      );
+
+      return matchesDifficulty && matchesSearch;
+    });
+  }, [coursess, difficultyFilter, searchQuery]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative">
+      {isPageLoading && <LoaderOverlay message="Loading dashboard..." />}
       {/* Header */}
       <header className={`sticky top-0 z-50 bg-slate-900/60 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+            <button
+              onClick={() => navigate('/dashboard')}
+              type="button"
+              className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+            >
               OpenLingua
-            </div>
+            </button>
             
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
               <button className="relative p-2 text-gray-400 hover:text-white transition-colors duration-200">
                 <Bell size={20} />
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-500 rounded-full"></span>
@@ -365,7 +445,7 @@ function getInitials(name: string): string {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => handleSidebarItemClick(item.id)}
                     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all duration-200 hover:bg-white/5 ${
                       activeTab === item.id 
                         ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-white border border-cyan-500/30' 
@@ -379,6 +459,7 @@ function getInitials(name: string): string {
                 );
               })}
             </nav>
+
 
             {/* Quick Actions */}
             <div className="mt-8 p-4 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-lg border border-cyan-500/20">
@@ -472,7 +553,11 @@ function getInitials(name: string): string {
               <div className="flex space-x-3">
                 
                 
-                <select className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-all duration-200">
+                <select
+                  value={difficultyFilter}
+                  onChange={(e) => setDifficultyFilter(e.target.value)}
+                  className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-all duration-200"
+                >
                   <option value="">All Levels</option>
                   <option value="beginner">Beginner</option>
                   <option value="intermediate">Intermediate</option>
@@ -485,19 +570,23 @@ function getInitials(name: string): string {
           {/* Course Grid */}
           <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 transition-all duration-1000 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
 
-            {
-            coursess.length>0 ? (coursess.map((course, index) =>  (
-              <CourseCard
-            key={course.id}
-            course={course}
-            index={index}
-            user={user}
-            JoinCourse={JoinCourse}
-            getDifficultyColor={getDifficultyColor}
-          />
-            ))):(<p className="text-gray-400 text-xs">No Courses</p>)
-            
-            }
+            {filteredCourses.length > 0 ? (
+              filteredCourses.map((course, index) => (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  index={index}
+                  user={user}
+                  JoinCourse={JoinCourse}
+                  isJoined={joined.some((joinedCourse) => joinedCourse.id === course.id)}
+                  getDifficultyColor={getDifficultyColor}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center text-gray-400 text-sm">
+                {coursess.length === 0 ? 'No courses available yet.' : 'No courses match your filters.'}
+              </div>
+            )}
           </div>
 
           {/* Recent Activity 
@@ -540,8 +629,9 @@ interface Courses {
 type CourseCardProps = {
   course: Courses;
   index: number;
-  user?:  User  | null;
-  JoinCourse: (course: Courses) => void;
+  user?: User | null;
+  JoinCourse: (course: Courses) => Promise<boolean>;
+  isJoined: boolean;
   getDifficultyColor: (level: string) => string;
 };
 
@@ -572,10 +662,13 @@ const CourseCard: React.FC<CourseCardProps> = ({
   index,
   user,
   JoinCourse,
+  isJoined,
   getDifficultyColor,
 }) => {
 const [joinedall, setJoinedall] = useState<Joined[]>([]);
 const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
+const proAlert = useProAlert();
+const navigate = useNavigate();
   const getJoinedCoursesUseridCourseid = async (user: User, course: Courses) => {
   try {
     const res = await fetch(`${config.BACKEND_URL}/api/courses/joined/${user.id}/${course.id}`, {
@@ -583,6 +676,10 @@ const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
       headers: { "Content-Type": "application/json" },
       credentials: 'include',
     });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return null;
+    }
 
     if (!res.ok) {
       throw new Error("Failed to fetch courses");
@@ -598,7 +695,7 @@ if (data.joined) {
     
   } catch (error) {
     console.error("Error fetching joined courses:", error);
-    alert("Something went wrong while fetching the joined courses.");
+    proAlert.error("Something went wrong while fetching the joined courses.");
   }
 };
 const getJoinedCoursesCourseid = async (course: Courses) => {
@@ -608,6 +705,10 @@ const getJoinedCoursesCourseid = async (course: Courses) => {
       headers: { "Content-Type": "application/json" },
       credentials: 'include',
     });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
 
     if (!res.ok) {
       throw new Error("Failed to fetch courses");
@@ -628,7 +729,7 @@ const getJoinedCoursesCourseid = async (course: Courses) => {
     
   } catch (error) {
     console.error("Error fetching joined courses:", error);
-    alert("Something went wrong while fetching the joined courses.");
+    proAlert.error("Something went wrong while fetching the joined courses.");
   }
 };
 
@@ -656,16 +757,29 @@ function getRelativeTime(dateString: string): string {
 
   return "just now";
 }
-  useEffect(()=>{
-     if (user && course) {
-  getJoinedCoursesUseridCourseid(user, course);
-   
-}
-    
-  },[user, course])
+  useEffect(() => {
+    if (user && course && isJoined) {
+      getJoinedCoursesUseridCourseid(user, course);
+    } else {
+      setJoinedBoth(null);
+    }
+  }, [user, course, isJoined])
   useEffect(()=>{
 getJoinedCoursesCourseid(course)
   },[course])
+
+  const handleJoinClick = async () => {
+    if (!user) {
+      proAlert.info("Please sign in before joining a course.");
+      return;
+    }
+
+    const joined = await JoinCourse(course);
+    if (joined) {
+      await getJoinedCoursesUseridCourseid(user, course);
+      await getJoinedCoursesCourseid(course);
+    }
+  };
   return (
     <div
       style={{ transitionDelay: `${index * 100}ms` }}
@@ -689,7 +803,7 @@ getJoinedCoursesCourseid(course)
         </div>
 
         <div className="space-y-3">
-          {joinedBoth === null ? (
+          {!isJoined ? (
             <>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Progress</span>
@@ -705,12 +819,12 @@ getJoinedCoursesCourseid(course)
           ):(<>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Progress</span>
-                <span className="text-white font-medium">{joinedBoth.progress}</span>
+                <span className="text-white font-medium">{joinedBoth?.progress ?? "0%"}</span>
               </div>
               <div className="w-full bg-slate-700 rounded-full h-2">
                 <div
                   className="bg-gradient-to-r from-cyan-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${joinedBoth.progress}` }}
+                  style={{ width: `${joinedBoth?.progress ?? "0%"}` }}
                 ></div>
               </div>
             </>)}
@@ -739,20 +853,20 @@ getJoinedCoursesCourseid(course)
 
           <div className="flex items-center justify-between pt-2 border-t border-white/10">
             <span className="text-gray-400 text-xs"> {getRelativeTime(course.createdAt)}</span>
-            {joinedBoth === null? (
+            {!isJoined ? (
               <button
-                onClick={() => JoinCourse(course)}
+                onClick={handleJoinClick}
                 className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors duration-200"
               >
                 Enroll →
               </button>
             
             ) : (
-              user && ( <Link to={`/course/${course.id}/${user.id}`}>
+              <Link to={`/course/${course.id}`}>
                 <button className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors duration-200">
                   View →
                 </button>
-              </Link>)
+              </Link>
                
             )}
           </div>

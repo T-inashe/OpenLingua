@@ -40,15 +40,20 @@ const translateText = async (req, res) => {
 };
 const createCourse = async (req, res) => {
   try {
-    const { title,description, language,
-    level,
-    category,
-    hours,
-    public, // Or use a toggle if you have one
-    community,
-    discussions, // Set default or get from user
-    info,
-    instructorId, words } = req.body;
+    const {
+      title,
+      description,
+      language,
+      level,
+      category,
+      hours,
+      public, // Or use a toggle if you have one
+      community,
+      discussions, // Set default or get from user
+      info,
+      instructorId,
+      units = []
+    } = req.body;
 
     if (!title || !description) {
       //return res.status(400).json({ error: "Title and language are required" });
@@ -68,27 +73,37 @@ const createCourse = async (req, res) => {
         language,
         level,
         public,
-        
-   
+        units: {
+          create: units.map((unit, unitIndex) => ({
+            title: unit.title,
+            description: unit.description,
+            position: typeof unit.position === "number" ? unit.position : unitIndex,
+            lessons: {
+              create: (unit.lessons || []).map((lesson, lessonIndex) => ({
+                title: lesson.title,
+                type: lesson.type,
+                duration:
+                  typeof lesson.duration === "number" && Number.isFinite(lesson.duration)
+                    ? lesson.duration
+                    : null,
+                content: lesson.content ?? null,
+                position: typeof lesson.position === "number" ? lesson.position : lessonIndex
+              }))
+            }
+          }))
+        }
+      },
+      include: {
+        units: {
+          orderBy: { position: "asc" },
+          include: {
+            lessons: { orderBy: { position: "asc" } }
+          }
+        }
       }
     });
-   await Promise.all(
-  words.map(wordData =>
-    prisma.word.create({
-      data: {
-        title: wordData.title,
-        type: wordData.type,
-        duration: wordData.duration.toString(),
-        content: wordData.content,
-        courseId: course.id
-      }
-    })
-  )
-);
 
-    
-  
-   res.status(201).json({ message: "Course created successfully"});
+    res.status(201).json({ message: "Course created successfully", course });
     
 //res.redirect(`${process.env.FRONTEND_URL}/dashboard`)
   } catch (error) {
@@ -157,7 +172,15 @@ const getCourseDetails = async (req, res) => {
     const course = await prisma.course.findUnique({
       where: { id: courseId },
       include: {
-        words: true,
+        units: {
+          orderBy: { position: "asc" },
+          include: {
+            lessons: { orderBy: { position: "asc" } }
+          }
+        },
+        words: {
+          orderBy: { createdAt: "asc" }
+        },
         forumPosts: true
       }
     });
