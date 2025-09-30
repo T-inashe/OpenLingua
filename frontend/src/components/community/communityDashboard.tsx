@@ -52,12 +52,17 @@ const CommunityDashboard = () => {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    const success = await logoutRequest();
-    setIsLoggingOut(false);
+    try {
+      const success = await logoutRequest();
+      setIsLoggingOut(false);
 
-    if (success) {
-      navigate('/signIn');
-    } else {
+      if (success) {
+        navigate('/signIn');
+      } else {
+        proAlert.error('Unable to log out. Please try again.');
+      }
+    } catch (error) {
+      setIsLoggingOut(false);
       proAlert.error('Unable to log out. Please try again.');
     }
   };
@@ -134,16 +139,22 @@ const CommunityDashboard = () => {
         {/* Event Form */}
         {showEventForm && (
           <div className="mb-4 bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10">
+            <label htmlFor="event-title" className="block text-white text-sm font-medium mb-1">Event Title</label>
             <input
+              id="event-title"
               type="text"
               placeholder="Event Title"
               className="w-full mb-2 px-3 py-2 rounded-lg bg-white/5 text-white placeholder-gray-400 border border-white/10 focus:outline-none focus:border-cyan-500/50"
             />
+            <label htmlFor="event-date" className="block text-white text-sm font-medium mb-1">Date</label>
             <input
+              id="event-date"
               type="date"
               className="w-full mb-2 px-3 py-2 rounded-lg bg-white/5 text-white placeholder-gray-400 border border-white/10 focus:outline-none focus:border-cyan-500/50"
             />
+            <label htmlFor="event-time" className="block text-white text-sm font-medium mb-1">Time</label>
             <input
+              id="event-time"
               type="time"
               className="w-full mb-2 px-3 py-2 rounded-lg bg-white/5 text-white placeholder-gray-400 border border-white/10 focus:outline-none focus:border-cyan-500/50"
             />

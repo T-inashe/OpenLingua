@@ -31,6 +31,9 @@ export default function ReviewsSection({
     try {
       await onCreateReview(newReview.text, newReview.rating);
       setNewReview({ text: "", rating: 5 }); // Reset form on success
+    } catch (error) {
+      // Error handling is done by parent component or onCreateReview callback
+      // Component continues to function normally
     } finally {
       setReviewSubmitting(false);
     }
@@ -128,7 +131,7 @@ export default function ReviewsSection({
       {/* Review Form */}
       <div className="border-t border-white/10 pt-6">
         <h3 className="text-white font-medium text-lg mb-4">Write a Review</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" data-testid="review-form">
           <div>
             <label htmlFor="review-text" className="block text-white text-sm font-medium mb-2">
               Your Review

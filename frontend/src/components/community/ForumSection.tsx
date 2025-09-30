@@ -24,6 +24,9 @@ export default function ForumSection({ forums, currentUser, isVisible, onCreateF
     try {
       await onCreateForum(message);
       setMessage(""); // Clear form on success
+    } catch (error) {
+      // Error handling is done by parent component or onCreateForum callback
+      // Component continues to function normally
     } finally {
       setForumSubmitting(false);
     }
@@ -45,7 +48,7 @@ export default function ForumSection({ forums, currentUser, isVisible, onCreateF
         Forum Discussion
       </h2>
 
-      <form onSubmit={handleSubmit} className="mb-6">
+      <form onSubmit={handleSubmit} className="mb-6" data-testid="forum-form">
         <div className="relative">
           <label htmlFor="forum-message" className="sr-only">
             Write your forum message

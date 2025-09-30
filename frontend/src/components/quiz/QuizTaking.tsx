@@ -14,8 +14,9 @@ import type { Quiz, QuizResult, QuizQuestion } from '../../types/quiz';
 
 // Component props interface
 interface QuizTakingProps {
-  courseId: string;
-  quizId: string;
+  courseId?: string;
+  quizId?: string;
+  quiz?: Quiz;
   onComplete: (result: QuizResult) => void;
   onCancel: () => void;
 }
@@ -23,8 +24,8 @@ interface QuizTakingProps {
 // Answer mapping type
 type AnswerMap = Record<string, string>;
 
-const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps) => {
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
+const QuizTaking = ({ courseId, quizId, quiz: initialQuiz, onComplete, onCancel }: QuizTakingProps) => {
+  const [quiz, setQuiz] = useState<Quiz | null>(initialQuiz || null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -36,8 +37,14 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
   const [showResults, setShowResults] = useState<boolean>(false);
 
   useEffect(() => {
-    loadQuiz();
-  }, [courseId, quizId]);
+    if (!initialQuiz && courseId && quizId) {
+      loadQuiz();
+    } else if (initialQuiz) {
+      setQuiz(initialQuiz);
+      setTimeRemaining((initialQuiz.timeLimit || 30) * 60);
+      setLoading(false);
+    }
+  }, [courseId, quizId, initialQuiz]);
 
   // Timer effect
   useEffect(() => {
@@ -57,6 +64,11 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
   }, [timeRemaining, submitted]);
 
   const loadQuiz = async (): Promise<void> => {
+    if (!courseId || !quizId) {
+      setError("Course ID and Quiz ID are required to load the quiz.");
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -93,21 +105,53 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
 
   const handleSubmit = async (): Promise<void> => {
     try {
-      setLoading(true);
+      setSubmitted(true);
       
-      if (!quiz || timeRemaining === null) {
+      if (!quiz) {
         throw new Error('Quiz not loaded properly');
       }
 
-      const timeSpent = ((quiz.timeLimit || 30) * 60) - timeRemaining;
+      // Calculate score based on answers
+      let correctAnswers = 0;
+      quiz.questions.forEach(question => {
+        const userAnswer = answers[question.id];
+        if (userAnswer === question.correctAnswer) {
+          correctAnswers++;
+        }
+      });
+
+      const score = Math.round((correctAnswers / quiz.questions.length) * 100);
+      const timeSpent = timeRemaining !== null ? ((quiz.timeLimit || 30) * 60) - timeRemaining : 0;
       
-      // For now, using a placeholder sessionId - this should be obtained from startQuizSession
-      const sessionId = `session_${Date.now()}`;
-      
-      const result = await quizService.submitQuizAnswers(quizId, sessionId, answers, timeSpent);
+      const result = {
+        id: `result_${Date.now()}`,
+        quizId: quiz.id,
+        userId: 'user_1',
+        score,
+        totalPoints: quiz.questions.length,
+        percentage: score,
+        answers,
+        timeSpent,
+        correctAnswers,
+        totalQuestions: quiz.questions.length,
+        completedAt: new Date().toISOString(),
+        passed: score >= (quiz.passingScore || 80),
+        questionResults: {} as Record<string, { correct: boolean; userAnswer: string; correctAnswer: string }>
+      };
+
+      // Fill in question results
+      quiz.questions.forEach(question => {
+        const userAnswer = answers[question.id] || '';
+        const isCorrect = userAnswer === question.correctAnswer;
+        result.questionResults[question.id] = {
+          correct: isCorrect,
+          userAnswer,
+          correctAnswer: question.correctAnswer as string
+        };
+      });
+
       setResults(result);
-      setSubmitted(true);
-      setShowResults(true);
+      onComplete(result);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
@@ -292,7 +336,40 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
     );
   }
 
+  // Check for empty quiz
+  if (!quiz.questions || quiz.questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white">This quiz has no questions.</p>
+          <button
+            onClick={onCancel}
+            className="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const currentQuestion = quiz.questions[currentQuestionIndex];
+  if (!currentQuestion) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white">Question not found.</p>
+          <button
+            onClick={onCancel}
+            className="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const answeredCount = getAnsweredQuestions().length;
   const progress = ((currentQuestionIndex + 1) / quiz.questions.length) * 100;
 
@@ -388,13 +465,15 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
                 </div>
               </div>
 
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="w-full mt-6 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-              >
-                {loading ? 'Submitting...' : 'Submit Quiz'}
-              </button>
+              {quiz.questions.length > 1 && (
+                <button
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  className="w-full mt-6 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                >
+                  {loading ? 'Submitting...' : 'Submit Quiz'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -402,11 +481,19 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
           <div className="lg:col-span-3">
             <div className="bg-white/10 rounded-xl p-6">
               {/* Progress Bar */}
-              <div className="w-full bg-white/10 rounded-full h-2 mb-6">
+              <div className="w-full bg-white/10 rounded-full h-2 mb-2">
                 <div 
                   className="bg-cyan-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
+                  role="progressbar"
+                  aria-label="Quiz progress"
+                  aria-valuenow={answeredCount}
+                  aria-valuemin={0}
+                  aria-valuemax={quiz.questions.length}
                 />
+              </div>
+              <div className="text-center text-gray-400 text-sm mb-4">
+                {Math.round((answeredCount / quiz.questions.length) * 100)}% Complete
               </div>
 
               {/* Question */}
@@ -416,7 +503,7 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
                     {currentQuestion.question}
                   </h2>
                   <button
-                    onClick={() => handleFlag(currentQuestion.id)}
+                    onClick={() => handleFlag(currentQuestion.id.toString())}
                     className={`p-2 rounded-lg transition-colors ${
                       flagged.has(currentQuestion.id.toString()) 
                         ? 'bg-yellow-600/20 text-yellow-400' 
@@ -439,8 +526,8 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
                       type="radio"
                       name={`question_${currentQuestion.id}`}
                       value={option}
-                      checked={answers[currentQuestion.id] === option}
-                      onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                      checked={answers[currentQuestion.id.toString()] === option}
+                      onChange={(e) => handleAnswerChange(currentQuestion.id.toString(), e.target.value)}
                       className="w-4 h-4 text-cyan-600"
                     />
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-white text-sm font-medium">
@@ -457,8 +544,8 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
                         type="radio"
                         name={`question_${currentQuestion.id}`}
                         value="true"
-                        checked={answers[currentQuestion.id] === 'true'}
-                        onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                        checked={answers[currentQuestion.id.toString()] === 'true'}
+                        onChange={(e) => handleAnswerChange(currentQuestion.id.toString(), e.target.value)}
                         className="w-4 h-4 text-cyan-600"
                       />
                       <CheckCircle className="w-5 h-5 text-green-500" />
@@ -469,8 +556,8 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
                         type="radio"
                         name={`question_${currentQuestion.id}`}
                         value="false"
-                        checked={answers[currentQuestion.id] === 'false'}
-                        onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                        checked={answers[currentQuestion.id.toString()] === 'false'}
+                        onChange={(e) => handleAnswerChange(currentQuestion.id.toString(), e.target.value)}
                         className="w-4 h-4 text-cyan-600"
                       />
                       <div className="w-5 h-5 rounded-full border-2 border-red-500 flex items-center justify-center">
@@ -484,8 +571,8 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
 
                 {currentQuestion.type === 'fill-in-blank' && (
                   <textarea
-                    value={answers[currentQuestion.id] || ''}
-                    onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                    value={answers[currentQuestion.id.toString()] || ''}
+                    onChange={(e) => handleAnswerChange(currentQuestion.id.toString(), e.target.value)}
                     placeholder="Enter your answer here..."
                     rows={4}
                     className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500 resize-none"
@@ -495,23 +582,35 @@ const QuizTaking = ({ courseId, quizId, onComplete, onCancel }: QuizTakingProps)
 
               {/* Navigation */}
               <div className="flex justify-between items-center">
-                <button
-                  onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
-                  disabled={currentQuestionIndex === 0}
-                  className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </button>
+                {currentQuestionIndex > 0 && (
+                  <button
+                    onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
+                    className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setCurrentQuestionIndex(Math.min(quiz.questions.length - 1, currentQuestionIndex + 1))}
-                  disabled={currentQuestionIndex === quiz.questions.length - 1}
-                  className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                <div className="flex-1" />
+
+                {currentQuestionIndex < quiz.questions.length - 1 ? (
+                  <button
+                    onClick={() => setCurrentQuestionIndex(Math.min(quiz.questions.length - 1, currentQuestionIndex + 1))}
+                    className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                  >
+                    {loading ? 'Submitting...' : 'Submit Quiz'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -65,12 +65,12 @@ export default function QuizLesson({ lesson, quizResponses, onQuizResponseUpdate
               </span>
               <div className="flex-1 space-y-4">
                 <div>
-                  <p className="text-base font-semibold text-white">{question.prompt}</p>
+                  <p className="text-base font-semibold text-white">{question.prompt || (question as any).text || 'Question text not available'}</p>
                   <p className="text-xs uppercase tracking-wide text-white/50">Choose one answer</p>
                 </div>
 
                 <div className="space-y-3">
-                  {question.options.map((option, optionIndex) => {
+                  {question.options?.map((option, optionIndex) => {
                     const optionIsSelected = selectedOptionId === option.id;
                     const optionIsCorrect = option.id === question.correctOptionId;
                     const showFeedback = hasResponse;
@@ -121,7 +121,11 @@ export default function QuizLesson({ lesson, quizResponses, onQuizResponseUpdate
                         )}
                       </button>
                     );
-                  })}
+                  }) || (
+                    <div className="text-gray-400 text-sm italic">
+                      No options available for this question.
+                    </div>
+                  )}
                 </div>
 
                 {hasResponse && (

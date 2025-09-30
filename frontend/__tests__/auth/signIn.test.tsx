@@ -6,9 +6,9 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import "@testing-library/jest-dom";
-import SignIn from "../src/components/auth/signIn";
-import * as navigateModule from "../src/utils/navigate";
-import config from "../src/config";
+import SignIn from "../../src/components/auth/signIn";
+import * as navigateModule from "../../src/utils/navigate";
+import config from "../../src/config";
 
 describe("SignIn", () => {
   const renderWithRouter = () =>
