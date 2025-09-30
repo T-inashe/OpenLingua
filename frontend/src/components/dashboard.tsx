@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, Plus, BookOpen, TrendingUp, Users, Star, Award, Settings, Bell, LogOut } from "lucide-react";
+import { Search, Plus, BookOpen, TrendingUp, Users, Star, Award, Settings, Bell,} from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import config from "../config";
 import LoaderOverlay from "./Loader";
-import { logoutRequest } from "../utils/logout";
+// import { logoutRequest } from "../utils/logout";
 import ThemeToggle from "./ThemeToggle";
 import { useProAlert } from "../context/ProAlertContext";
 import { handleUnauthorized } from "../utils/handleUnauthorized";
@@ -353,22 +353,22 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = async () => {
-    setIsPageLoading(true);
-    const success = await logoutRequest();
-    setIsPageLoading(false);
+  // const handleLogout = async () => {
+  //   setIsPageLoading(true);
+  //   const success = await logoutRequest();
+  //   setIsPageLoading(false);
 
-    if (success) {
-      setUser(null);
-      setInit('');
-      setMycourses([]);
-      setCoursess([]);
-      setJoined([]);
-      navigate('/signIn');
-    } else {
-      proAlert.error('Unable to log out. Please try again.');
-    }
-  };
+  //   if (success) {
+  //     setUser(null);
+  //     setInit('');
+  //     setMycourses([]);
+  //     setCoursess([]);
+  //     setJoined([]);
+  //     navigate('/signIn');
+  //   } else {
+  //     proAlert.error('Unable to log out. Please try again.');
+  //   }
+  // };
 
   const filteredCourses = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
