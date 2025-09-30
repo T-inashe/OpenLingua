@@ -4,11 +4,12 @@ import config from "../config";
 
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
-import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar } from "lucide-react";
+import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar, LogOut } from "lucide-react";
 import LoaderOverlay from "./Loader";
 import ThemeToggle from "./ThemeToggle";
 import { useProAlert } from "../context/ProAlertContext";
 import { handleUnauthorized } from "../utils/handleUnauthorized";
+import { logoutRequest } from "../utils/logout";
 
 type Review = {
 user: User;
