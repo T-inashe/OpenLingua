@@ -51,7 +51,9 @@
       "!src/controllers/quizProxyController.js",
       "!src/controllers/quizSessionController.js",
       "!src/services/quizFallbackManager.js",
-      "!src/server.js"
+      "!src/server.js",
+      "!src/**/app.js",
+      "!src/lib/supabase.js"
     ]
   }
 }
