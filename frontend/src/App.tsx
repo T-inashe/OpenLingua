@@ -19,6 +19,7 @@ function App() {
           <Routes>
           {/* <Route path="/" element={<LandingPage />} /> */}
             <Route path="/signIn" element={<SignIn />} />
+            <Route path="/login" element={<SignIn />} />
             <Route path="/signUp" element={<SignUp />}/>
             <Route path="/community" element={<CommunityDashboard />}/>
             <Route path="/create/:id" element={<CourseCreation/>} />

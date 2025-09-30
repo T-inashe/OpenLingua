@@ -1,5 +1,5 @@
 import type { NavigateFunction } from "react-router-dom";
-import { ProAlertVariant } from "../context/ProAlertContext";
+import type { ProAlertVariant } from "../context/ProAlertContext";
 
 type ProAlert = {
   show: (message: string, variant?: ProAlertVariant) => void;

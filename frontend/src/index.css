@@ -67,3 +67,36 @@ body.theme-light .bg-gradient-to-r.from-cyan-500.to-purple-500 {
 body.theme-light .group:hover .text-white {
   color: #0f172a !important;
 }
+
+body.theme-light .landing-page {
+  background-image: linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%) !important;
+  color: #f8fafc !important;
+}
+
+body.theme-light .landing-page .text-white {
+  color: #ffffff !important;
+}
+
+body.theme-light .landing-page .text-gray-300 {
+  color: #cbd5f5 !important;
+}
+
+body.theme-light .landing-page .text-gray-400 {
+  color: #a5b4fc !important;
+}
+
+body.theme-light .landing-page .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+body.theme-light .landing-page .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.theme-light .landing-page .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.theme-light .landing-page .border-white\/15 {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
