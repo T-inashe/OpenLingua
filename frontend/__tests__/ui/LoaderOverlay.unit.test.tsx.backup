@@ -1,0 +1,260 @@
+import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import LoaderOverlay from '../../src/components/ui/Loader';
+
+// Mock Lucide React icons
+jest.mock('lucide-react', () => ({
+  Loader2: ({ size, className }: { size?: number; className?: string }) => 
+    <div data-testid="loader-icon" data-size={size} className={className}></div>,
+}));
+
+describe('LoaderOverlay Component', () => {
+  describe('Rendering', () => {
+    test('renders loader overlay', () => {
+      const { container } = render(<LoaderOverlay />);
+      
+      const overlay = container.firstChild as HTMLElement;
+      expect(overlay).toHaveClass('fixed');
+      expect(screen.getByTestId('loader-icon')).toBeInTheDocument();
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
+
+    test('renders with custom message', () => {
+      const customMessage = 'Please wait...';
+      render(<LoaderOverlay message={customMessage} />);
+      
+      expect(screen.getByText(customMessage)).toBeInTheDocument();
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    test('renders with default message when none provided', () => {
+      render(<LoaderOverlay />);
+      
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
+
+    test('renders loader icon with correct size', () => {
+      render(<LoaderOverlay />);
+      
+      const icon = screen.getByTestId('loader-icon');
+      expect(icon).toHaveAttribute('data-size', '32');
+    });
+  });
+
+  describe('Styling Classes', () => {
+    test('applies all required overlay classes', () => {
+      const { container } = render(<LoaderOverlay />);
+      
+      const overlay = container.firstChild as HTMLElement;
+      expect(overlay).toHaveClass(
+        'fixed',
+        'inset-0',
+        'z-50',
+        'flex',
+        'items-center',
+        'justify-center',
+        'bg-slate-950/60',
+        'backdrop-blur-sm'
+      );
+    });
+
+    test('applies all required container classes', () => {
+      const { container } = render(<LoaderOverlay />);
+      
+      const overlay = container.firstChild as HTMLElement;
+      const innerContainer = overlay.firstChild as HTMLElement;
+      expect(innerContainer).toHaveClass(
+        'flex',
+        'flex-col',
+        'items-center',
+        'gap-3',
+        'bg-white/10',
+        'border',
+        'border-white/20',
+        'rounded-xl',
+        'px-6',
+        'py-5',
+        'text-white',
+        'shadow-xl'
+      );
+    });
+
+    test('applies correct icon classes', () => {
+      render(<LoaderOverlay />);
+      
+      const icon = screen.getByTestId('loader-icon');
+      expect(icon).toHaveClass('animate-spin text-cyan-300');
+    });
+
+    test('applies correct message classes', () => {
+      render(<LoaderOverlay />);
+      
+      const message = screen.getByText('Loading...');
+      expect(message).toHaveClass('text-sm font-medium tracking-wide text-white/90');
+    });
+  });
+
+  describe('Accessibility', () => {
+    test('has proper structure for screen readers', () => {
+      render(<LoaderOverlay />);
+      
+      // Should have readable loading text
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
+
+    test('loader icon is properly identified', () => {
+      render(<LoaderOverlay />);
+      
+      const icon = screen.getByTestId('loader-icon');
+      expect(icon).toBeInTheDocument();
+    });
+
+    test('message is visible to screen readers', () => {
+      const message = 'Processing your request...';
+      render(<LoaderOverlay message={message} />);
+      
+      expect(screen.getByText(message)).toBeVisible();
+    });
+  });
+
+  describe('Component Structure', () => {
+    test('has correct DOM structure', () => {
+      const { container } = render(<LoaderOverlay />);
+      
+      const overlay = container.firstChild as HTMLElement;
+      expect(overlay.tagName).toBe('DIV');
+      
+      const contentContainer = overlay.firstChild as HTMLElement;
+      expect(contentContainer.tagName).toBe('DIV');
+      
+      const icon = contentContainer.firstChild as HTMLElement;
+      const message = contentContainer.lastChild as HTMLElement;
+      
+      expect(icon).toHaveAttribute('data-testid', 'loader-icon');
+      expect(message.tagName).toBe('SPAN');
+    });
+
+    test('maintains proper element hierarchy', () => {
+      render(<LoaderOverlay />);
+      
+      const icon = screen.getByTestId('loader-icon');
+      const message = screen.getByText('Loading...');
+      
+      expect(icon.parentElement).toBe(message.parentElement);
+    });
+  });
+
+  describe('Props Interface', () => {
+    test('accepts message prop', () => {
+      const testMessage = 'Uploading files...';
+      render(<LoaderOverlay message={testMessage} />);
+      
+      expect(screen.getByText(testMessage)).toBeInTheDocument();
+    });
+
+    test('handles empty message prop', () => {
+      const { container } = render(<LoaderOverlay message="" />);
+      
+      const messageSpan = container.querySelector('span');
+      expect(messageSpan).toHaveTextContent('');
+    });
+
+    test('handles undefined message prop', () => {
+      render(<LoaderOverlay message={undefined} />);
+      
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
+  });
+
+  describe('Props Handling', () => {
+    test('handles empty string message', () => {
+      const { container } = render(<LoaderOverlay message="" />);
+      
+      const messageSpan = container.querySelector('span');
+      expect(messageSpan).toHaveTextContent('');
+      expect(messageSpan).toBeInTheDocument();
+    });
+
+    test('handles null message', () => {
+      const { container } = render(<LoaderOverlay message={null as any} />);
+      
+      const messageSpan = container.querySelector('span');
+      expect(messageSpan).toHaveTextContent('Loading...');
+    });
+
+    test('handles very long message', () => {
+      const longMessage = 'This is a very long loading message that should still render properly without breaking the layout or causing any issues';
+      render(<LoaderOverlay message={longMessage} />);
+      
+      expect(screen.getByText(longMessage)).toBeInTheDocument();
+    });
+  });
+
+  describe('Visual States', () => {
+    test('renders loading animation', () => {
+      render(<LoaderOverlay />);
+      
+      const icon = screen.getByTestId('loader-icon');
+      expect(icon).toHaveClass('animate-spin');
+    });
+
+    test('has semi-transparent backdrop', () => {
+      const { container } = render(<LoaderOverlay />);
+      
+      const overlay = container.firstChild as HTMLElement;
+      expect(overlay).toHaveClass('bg-slate-950/60');
+    });
+
+    test('has backdrop blur effect', () => {
+      const { container } = render(<LoaderOverlay />);
+      
+      const overlay = container.firstChild as HTMLElement;
+      expect(overlay).toHaveClass('backdrop-blur-sm');
+    });
+  });
+
+  describe('Integration', () => {
+    test('renders without errors', () => {
+      expect(() => render(<LoaderOverlay />)).not.toThrow();
+    });
+
+    test('maintains consistent rendering', () => {
+      const { container: container1 } = render(<LoaderOverlay />);
+      const { container: container2 } = render(<LoaderOverlay />);
+      
+      expect(container1.innerHTML).toBe(container2.innerHTML);
+    });
+
+    test('handles multiple instances', () => {
+      render(
+        <div>
+          <LoaderOverlay message="First loader" />
+          <LoaderOverlay message="Second loader" />
+        </div>
+      );
+      
+      expect(screen.getByText('First loader')).toBeInTheDocument();
+      expect(screen.getByText('Second loader')).toBeInTheDocument();
+    });
+  });
+
+  describe('Performance', () => {
+    test('renders efficiently', () => {
+      const start = performance.now();
+      render(<LoaderOverlay />);
+      const end = performance.now();
+      
+      expect(end - start).toBeLessThan(100); // Should render in less than 100ms
+    });
+
+    test('handles rapid re-renders', () => {
+      const { rerender } = render(<LoaderOverlay message="Message 1" />);
+      
+      expect(() => {
+        for (let i = 0; i < 10; i++) {
+          rerender(<LoaderOverlay message={`Message ${i}`} />);
+        }
+      }).not.toThrow();
+    });
+  });
+});

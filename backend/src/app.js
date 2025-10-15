@@ -12,6 +12,7 @@ const passport = require('./config/passport');
 const courseRoutes = require("./routes/courseRoutes");
 const forumRoutes = require("./routes/forumRoutes");
 const vocabRoutes = require("./routes/vocabRoutes");
+const quizRoutes = require("./routes/quizRoutes");
 const { supabase } = require('./lib/supabase');
 const app = express();
 const pool = new Pool({
@@ -58,6 +59,7 @@ app.use('/api/auth', authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/forum", forumRoutes);
 app.use("/api/vocab", vocabRoutes);
+app.use("/api", quizRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Language Learning API is running!', timestamp: new Date().toISOString() });

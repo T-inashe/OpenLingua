@@ -1,6 +1,6 @@
 const { prisma } = require('../lib/prisma');
 
-const apiKey = " AIzaSyBS5OACi5JlNTgdLAYNFILd3T8IcYysJOA"; // replace with your real API key
+const apiKey = process.env.API_KEY; // replace with your real API key
 
 const translateText = async (req, res) => {
   try {
@@ -45,7 +45,7 @@ const createCourse = async (req, res) => {
       level,
       category,
       hours,
-      public, // Or use a toggle if you have one
+      public: isPublic, // Or use a toggle if you have one
       community,
       discussions, // Set default or get from user
       info,
@@ -70,7 +70,7 @@ const createCourse = async (req, res) => {
           info,
         language,
         level,
-        public,
+        public: isPublic,
         units: {
           create: units.map((unit, unitIndex) => ({
             title: unit.title,

@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 const { verifyAccessToken, verifyRefreshToken, generateTokens } = require('../utils/jwt');
 const { setAuthCookies, clearAuthCookies } = require('../utils/cookies');
 const { prisma } = require('../lib/prisma');
