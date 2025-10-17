@@ -73,6 +73,10 @@ interface CourseData {
 const CourseCreation = () => {
   const { id } = useParams();
  const navigate = useNavigate()
+ const searchParams = new URLSearchParams(window.location.search);
+ const editCourseId = searchParams.get('edit');
+ const [isEditMode, setIsEditMode] = useState<boolean>(!!editCourseId);
+ const [isLoadingCourse, setIsLoadingCourse] = useState<boolean>(!!editCourseId);
   const proAlert = useProAlert();
   const [isVisible, setIsVisible] = useState(false);
    const [publicc, setPublic] = useState("true");
@@ -97,6 +101,100 @@ const CourseCreation = () => {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const pendingNavigation = useRef<(() => void | Promise<void>) | null>(null);
+
+  // Fetch course data if in edit mode
+  useEffect(() => {
+    const loadCourseForEditing = async () => {
+      if (!editCourseId) return;
+
+      try {
+        setIsLoadingCourse(true);
+        const res = await fetch(`${config.BACKEND_URL}/api/courses/${editCourseId}`, {
+          method: "GET",
+          credentials: 'include',
+        });
+
+        if (handleUnauthorized(res, navigate, proAlert)) {
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch course");
+        }
+
+        const data = await res.json();
+        const course = data.course;
+
+        // Populate course data
+        setCourseData({
+          title: course.title || "",
+          description: course.description || "",
+          language: course.language || "",
+          difficulty: course.level || "",
+          tags: [],
+          category: course.category || "",
+          estimatedHours: course.hours || "",
+          targetAudience: ""
+        });
+
+        // Populate settings
+        setPublic(course.public || "true");
+        setCommunity(course.community || "true");
+        setDiscussions(course.discussions || "true");
+        setInfo(course.info || "");
+
+        // Populate units and lessons
+        if (course.units && course.units.length > 0) {
+          const loadedUnits = course.units.map((unit: any) => ({
+            id: Date.now() + Math.random(), // Generate new ID for UI
+            title: unit.title,
+            description: unit.description || "",
+            position: unit.position,
+            isExpanded: false,
+            lessons: unit.lessons.map((lesson: any) => {
+              const baseLesson: Lesson = {
+                id: Date.now() + Math.random(),
+                title: lesson.title,
+                type: lesson.type,
+                duration: lesson.duration || 5,
+                unitId: unit.id,
+                file: null,
+                position: lesson.position,
+                content: null
+              };
+
+              // Handle quiz lessons
+              if (lesson.type === "quiz" && lesson.content) {
+                try {
+                  const parsed = JSON.parse(lesson.content);
+                  baseLesson.quizQuestions = parsed.questions || [];
+                  baseLesson.content = null;
+                } catch (err) {
+                  console.error("Failed to parse quiz content", err);
+                }
+              } else {
+                baseLesson.content = lesson.content || "";
+              }
+
+              return baseLesson;
+            })
+          }));
+          setUnits(loadedUnits);
+        }
+
+        proAlert.success("Course loaded for editing");
+      } catch (error) {
+        console.error("Error loading course:", error);
+        proAlert.error("Failed to load course for editing");
+        navigate('/dashboard');
+      } finally {
+        setIsLoadingCourse(false);
+      }
+    };
+
+    loadCourseForEditing();
+  }, [editCourseId]);
+
 
   const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
 
@@ -273,6 +371,56 @@ const CourseCreation = () => {
 
   useEffect(() => {
     setIsVisible(true);
+    if (isEditMode && editCourseId) {
+      // load course data for editing
+      (async () => {
+        try {
+          const res = await fetch(`${config.BACKEND_URL}/api/courses/${editCourseId}`, {
+            method: 'GET',
+            credentials: 'include'
+          });
+
+          if (handleUnauthorized(res, navigate, proAlert)) return;
+
+          if (!res.ok) return;
+          const data = await res.json();
+          const course = data.course;
+          if (!course) return;
+          setCourseData({
+            title: course.title || '',
+            description: course.description || '',
+            language: course.language || '',
+            difficulty: course.level || '',
+            tags: [],
+            category: course.category || '',
+            estimatedHours: course.hours || '',
+            targetAudience: ''
+          });
+
+          // Map units & lessons
+          const loadedUnits: Unit[] = (course.units || []).map((u: any, ui: number) => ({
+            id: generateId() + ui,
+            title: u.title,
+            description: u.description || '',
+            lessons: (u.lessons || []).map((l: any, li: number) => ({
+              id: generateId() + li,
+              title: l.title,
+              type: l.type,
+              content: l.content,
+              duration: l.duration || 0,
+              unitId: ui,
+              file: null,
+              position: l.position
+            })),
+            isExpanded: true,
+            position: u.position
+          }));
+          setUnits(loadedUnits);
+        } catch (error) {
+          console.error('Failed to load course for editing', error);
+        }
+      })();
+    }
   }, []);
 
   const hasUnsavedChanges = Boolean(
@@ -547,8 +695,10 @@ const CourseCreation = () => {
  
 
   try {
-    const response = await fetch(`${config.BACKEND_URL}/api/courses/`, {
-      method: "POST",
+    const url = isEditMode && editCourseId ? `${config.BACKEND_URL}/api/courses/${editCourseId}` : `${config.BACKEND_URL}/api/courses/`;
+    const method = isEditMode && editCourseId ? 'PATCH' : 'POST';
+    const response = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       credentials: 'include',
       body: JSON.stringify(payload)
@@ -559,16 +709,16 @@ const CourseCreation = () => {
     }
 
     if (response.ok) {
-      proAlert.success("Course created successfully!");
+      proAlert.success(isEditMode ? "Course updated successfully!" : "Course created successfully!");
      navigate(`/dashboard`)
     } else {
       const errorData = await response.json();
-      console.error("Failed to create course:", errorData);
-      proAlert.error("Failed to create course.");
+      console.error(isEditMode ? "Failed to update course:" : "Failed to create course:", errorData);
+      proAlert.error(isEditMode ? "Failed to update course." : "Failed to create course.");
     }
   } catch (error) {
-    console.error("Error creating course:", error);
-    proAlert.error("Something went wrong while creating the course.");
+    console.error("Error saving course:", error);
+    proAlert.error("Something went wrong while saving the course.");
   }
 };
 
@@ -623,18 +773,13 @@ fileInputRef.current.click();
               
               <div>
                 <label className="block text-white font-medium mb-2">Language</label>
-                <select
+                <input
+                  type="text"
+                  placeholder="Enter language (e.g., isiXhosa, Swahili, Shona, etc.)"
                   value={courseData.language}
                   onChange={(e) => setCourseData({...courseData, language: e.target.value})}
-                  className="w-full bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-all duration-200"
-                >
-                  <option value="">Select Language</option>
-                  <option value="isixhosa">isiXhosa</option>
-                  <option value="swahili">Swahili</option>
-                  <option value="shona">Shona</option>
-                  <option value="xitsonga">Xitsonga</option>
-                  <option value="other">Other</option>
-                </select>
+                  className="w-full bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200"
+                />
               </div>
             </div>
 
@@ -712,7 +857,7 @@ fileInputRef.current.click();
         {units.map((unit) => (
           <div
             key={unit.id}
-            className="bg-white/5 backdrop-blur-lg rounded-lg border border-white/10"
+            className="bg-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30"
             onDrop={(e) => handleDrop(e, unit.id)}
             onDragOver={handleDragOver}
           >
@@ -835,7 +980,7 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
 {/* ... keep your lessonTypes rendering here ... */}
 
 
-<div className="mt-6 p-4 bg-white/5 backdrop-blur-lg rounded-lg border border-white/10">
+<div className="mt-6 p-4 bg-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30">
 <h4 className="text-white font-medium mb-3">Media Library</h4>
 <div className="space-y-2">
 <button
@@ -868,7 +1013,7 @@ className="w-full flex items-center space-x-2 text-gray-400 hover:text-white tra
 
 
 <div className="lg:col-span-2">
-<div className="bg-white/5 backdrop-blur-lg rounded-lg border border-white/10 p-6">
+<div className="bg-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30 p-6">
 <div className="flex items-center justify-between mb-6">
 <h3 className="text-white font-semibold text-lg">Content Editor</h3>
 
@@ -977,7 +1122,7 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
       {selectedLesson.quizQuestions?.map((question, index) => (
         <div
           key={question.id}
-          className="space-y-4 rounded-lg border border-white/10 bg-slate-900/60 p-4"
+          className="space-y-4 rounded-lg border-2 border-cyan-500/30 bg-slate-900/60 p-4"
         >
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
@@ -1022,7 +1167,7 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
               {question.options.map((option, optionIndex) => (
                 <div
                   key={option.id}
-                  className="flex flex-col gap-2 rounded-lg border border-white/10 bg-slate-900/70 p-3 md:flex-row md:items-center"
+                  className="flex flex-col gap-2 rounded-lg border-2 border-purple-500/30 bg-slate-900/70 p-3 md:flex-row md:items-center"
                 >
                   <div className="flex items-center gap-2">
                     <input
@@ -1073,16 +1218,23 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
 )}
 </div>
 ) : (
-<div className="text-center py-12">
-<FileText size={48} className="text-gray-500 mx-auto mb-4" />
-<p className="text-gray-400">Go back to select a lesson from the structure panel to start editing</p>
-<button
-onClick={() => setActiveStep(2)}
-className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition"
->
-<ArrowLeft size={16} />
-<span>Back to Structure</span>
-</button>
+<div className="flex items-center justify-center min-h-[400px]">
+  <div className="max-w-md text-center">
+    <div className="bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border-2 border-cyan-500/30 rounded-2xl p-8 shadow-xl">
+      <FileText size={64} className="text-cyan-400 mx-auto mb-6 animate-pulse" />
+      <h3 className="text-2xl font-bold text-white mb-3">No Lesson Selected</h3>
+      <p className="text-cyan-100 text-lg mb-6">
+        Please select a lesson from the <span className="font-semibold text-cyan-300">Structure</span> panel to start editing content
+      </p>
+      <button
+        onClick={() => setActiveStep(2)}
+        className="flex items-center space-x-2 mx-auto bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:shadow-lg hover:shadow-cyan-500/50 transition-all duration-300 transform hover:scale-105"
+      >
+        <ArrowLeft size={20} />
+        <span className="font-medium">Go to Structure</span>
+      </button>
+    </div>
+  </div>
 </div>
 )}
 </div>
@@ -1126,7 +1278,7 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
               </div>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-lg rounded-lg border border-white/10 p-6">
+            <div className="bg-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30 p-6">
               <h3 className="text-white font-semibold text-lg mb-4">Course Preview</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -1154,7 +1306,7 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
               </div>
             </div>
             {progress > 0 && (
-            <div className="bg-white/5 backdrop-blur-lg rounded-lg border border-white/10 p-6">
+            <div className="bg-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30 p-6">
               <h3 className="text-white font-semibold text-lg mb-4">Upload Progress</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
@@ -1181,6 +1333,7 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative">
       {loggingOut && <LoaderOverlay message="Logging out..." />}
+      {isLoadingCourse && <LoaderOverlay message="Loading course..." />}
       <header className={`bg-slate-900/80 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -1220,6 +1373,7 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
               return (
                 <div key={step.id} className="flex items-center">
                   <button
+                    onClick={() => setActiveStep(step.id)}
                     className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-300 ${
                       isActive 
                         ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg' 
@@ -1259,7 +1413,7 @@ className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 
           
             {activeStep === 4 ? (
               <button onClick={createCourse} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105">
-                Publish Course
+                {isEditMode ? 'Update Course' : 'Publish Course'}
               </button>
             ) : (
               <button

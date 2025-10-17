@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import config from "../config";
 import { Link, useNavigate } from "react-router-dom";
 import ProfileForm from "./profileForm";
+import '../css/LandingPage.css';
 
 interface FormData {
   email: string;
@@ -30,6 +31,10 @@ const SignUp: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Force dark mode on sign-up page
+    document.body.classList.remove('theme-light');
+    document.body.classList.add('theme-dark');
+    
     setIsVisible(true);
   }, []);
 
@@ -130,7 +135,7 @@ const SignUp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4">
+    <div className="signup-page dark !bg-gradient-to-br !from-slate-900 !via-purple-900 !to-slate-900 min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#0f172a' }}>
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>

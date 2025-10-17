@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { Search, Plus, BookOpen, TrendingUp, Users, Star, Award, Settings, Bell, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import config from "../config";
 import LoaderOverlay from "./Loader";
 import { logoutRequest } from "../utils/logout";
 import ThemeToggle from "./ThemeToggle";
 import { useProAlert } from "../context/ProAlertContext";
 import { handleUnauthorized } from "../utils/handleUnauthorized";
+import { apiFetch } from "../utils/api";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -49,31 +49,34 @@ const Dashboard = () => {
 
   const getUser = async () => {
     try {
-      const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
+      // ✅ Using apiFetch for automatic credentials
+      const res = await apiFetch('/api/auth/me', {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
       });
 
       if (handleUnauthorized(res, navigate, proAlert)) {
         return;
       }
-
+      
       if (!res.ok) {
-        throw new Error("Failed to fetch current user");
+        const errorText = await res.text();
+        console.error("Failed to fetch user. Status:", res.status, "Response:", errorText);
+        throw new Error(`Failed to fetch current user: ${res.status}`);
       }
 
       const data = await res.json();
 
-      setUser(data.user);
-      setInit(getInitials(data.user.name));
+      // ✅ FIX: data is the user directly, not data.user
+      setUser(data);
+      setInit(getInitials(data.name));
 
       await Promise.all([
-        getMyCourses(data.user),
-        getJoinedCourses(data.user)
+        getMyCourses(data),
+        getJoinedCourses(data)
       ]);
     } catch (error) {
       console.error("Error fetching user:", error);
+      proAlert.error("Failed to load user profile. Please try refreshing the page.");
     }
   };
 
@@ -86,9 +89,8 @@ const Dashboard = () => {
     // };
 
     try {
-      const res = await fetch(`${config.BACKEND_URL}/api/courses/getcourses/${user?.id}`, {
+      const res = await apiFetch(`/api/courses/getcourses/${user?.id}`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
       });
 
       if (handleUnauthorized(res, navigate, proAlert)) {
@@ -120,9 +122,8 @@ const Dashboard = () => {
     // Transform your state into the format expected by your backend
 
     try {
-      const res = await fetch(`${config.BACKEND_URL}/api/courses/`, {
+      const res = await apiFetch('/api/courses', {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
       });
 
       if (handleUnauthorized(res, navigate, proAlert)) {
@@ -161,9 +162,8 @@ const Dashboard = () => {
 
   const getJoinedCourses = async (user: User) => {
     try {
-      const res = await fetch(`${config.BACKEND_URL}/api/courses/getjoinedcourses/${user.id}`, {
+      const res = await apiFetch(`/api/courses/getjoinedcourses/${user.id}`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
       });
 
       if (handleUnauthorized(res, navigate, proAlert)) {
@@ -184,12 +184,14 @@ const Dashboard = () => {
         } else {
           const courses: Joined[] = data.courses;
           const total = courses.reduce<number>((sum, course) => {
-            const num = parseFloat(course.progress || "0"); // Handle undefined/null
+            // Parse progress string (e.g., "50%" -> 50)
+            const progressStr = course.progress || "0%";
+            const num = parseFloat(progressStr.replace('%', ''));
             return sum + (isNaN(num) ? 0 : num);
           }, 0);
 
-          const average = total / data.courses.length; // ✅ Use data.courses directly
-          setProgress(`${average.toFixed(2)}%`);
+          const average = total / data.courses.length;
+          setProgress(`${average.toFixed(1)}%`);
         }
       } else {
         console.error("Expected an array but got:", data);
@@ -212,10 +214,8 @@ const Dashboard = () => {
     };
 
     try {
-    const response = await fetch(`${config.BACKEND_URL}/api/courses/${course.id}/join`, {
+    const response = await apiFetch(`/api/courses/${course.id}/join`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
       body: JSON.stringify(payload)
     });
 
@@ -417,6 +417,7 @@ const Dashboard = () => {
         <img
           src={user.avatar}
           alt="avatar"
+          referrerPolicy="no-referrer"
           className="w-8 h-8 rounded-full object-cover"
         />
       ) : (
@@ -572,23 +573,49 @@ const Dashboard = () => {
 
           {/* Course Grid */}
           <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 transition-all duration-1000 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
-
-            {filteredCourses.length > 0 ? (
-              filteredCourses.map((course, index) => (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  index={index}
-                  user={user}
-                  JoinCourse={JoinCourse}
-                  isJoined={joined.some((joinedCourse) => joinedCourse.id === course.id)}
-                  getDifficultyColor={getDifficultyColor}
-                />
-              ))
+            {activeTab === 'created-courses' ? (
+              mycourses.length > 0 ? (
+                mycourses.map((course, index) => {
+                  const enrollment = joined.find((j) => j.id === course.id);
+                  return (
+                    <CourseCard
+                      key={course.id}
+                      course={course}
+                      index={index}
+                      user={user}
+                      JoinCourse={JoinCourse}
+                      isJoined={!!enrollment}
+                      getDifficultyColor={getDifficultyColor}
+                      isOwner={!!(user && user.id === (course as any).instructorId)}
+                      enrollmentProgress={enrollment?.progress || "0%"}
+                    />
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-center text-gray-400 text-sm">You haven't created any courses yet.</div>
+              )
             ) : (
-              <div className="col-span-full text-center text-gray-400 text-sm">
-                {coursess.length === 0 ? 'No courses available yet.' : 'No courses match your filters.'}
-              </div>
+              filteredCourses.length > 0 ? (
+                filteredCourses.map((course, index) => {
+                  const enrollment = joined.find((j) => j.id === course.id);
+                  return (
+                    <CourseCard
+                      key={course.id}
+                      course={course}
+                      index={index}
+                      user={user}
+                      JoinCourse={JoinCourse}
+                      isJoined={!!enrollment}
+                      getDifficultyColor={getDifficultyColor}
+                      enrollmentProgress={enrollment?.progress || "0%"}
+                    />
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-center text-gray-400 text-sm">
+                  {coursess.length === 0 ? 'No courses available yet.' : 'No courses match your filters.'}
+                </div>
+              )
             )}
           </div>
 
@@ -636,6 +663,8 @@ type CourseCardProps = {
   JoinCourse: (course: Courses) => Promise<boolean>;
   isJoined: boolean;
   getDifficultyColor: (level: string) => string;
+  isOwner?: boolean;
+  enrollmentProgress?: string; // Progress from enrollment data
 };
 
 
@@ -667,46 +696,18 @@ const CourseCard: React.FC<CourseCardProps> = ({
   JoinCourse,
   isJoined,
   getDifficultyColor,
+  isOwner = false,
+  enrollmentProgress = "0%",
 }) => {
 const [joinedall, setJoinedall] = useState<Joined[]>([]);
-const [joinedBoth, setJoinedBoth] = useState<Joined | null>(null);
+const [showDeleteModal, setShowDeleteModal] = useState(false);
 const proAlert = useProAlert();
 const navigate = useNavigate();
-  const getJoinedCoursesUseridCourseid = async (user: User, course: Courses) => {
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/courses/joined/${user.id}/${course.id}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
-    });
 
-    if (handleUnauthorized(res, navigate, proAlert)) {
-      return null;
-    }
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch courses");
-    }
-
-    const data = await res.json();
-if (data.joined) {
-  setJoinedBoth(data.joined);
-} else {
-  setJoinedBoth(null); // not joined
-}
-   
-    
-  } catch (error) {
-    console.error("Error fetching joined courses:", error);
-    proAlert.error("Something went wrong while fetching the joined courses.");
-  }
-};
 const getJoinedCoursesCourseid = async (course: Courses) => {
   try {
-    const res = await fetch(`${config.BACKEND_URL}/api/courses/course/${course.id}`, {
+    const res = await apiFetch(`/api/courses/course/${course.id}`, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
     });
 
     if (handleUnauthorized(res, navigate, proAlert)) {
@@ -760,15 +761,8 @@ function getRelativeTime(dateString: string): string {
 
   return "just now";
 }
-  useEffect(() => {
-    if (user && course && isJoined) {
-      getJoinedCoursesUseridCourseid(user, course);
-    } else {
-      setJoinedBoth(null);
-    }
-  }, [user, course, isJoined])
   useEffect(()=>{
-getJoinedCoursesCourseid(course)
+    getJoinedCoursesCourseid(course)
   },[course])
 
   const handleJoinClick = async () => {
@@ -779,9 +773,45 @@ getJoinedCoursesCourseid(course)
 
     const joined = await JoinCourse(course);
     if (joined) {
-      await getJoinedCoursesUseridCourseid(user, course);
       await getJoinedCoursesCourseid(course);
     }
+  };
+
+  const handleEdit = async () => {
+    // Simple inline edit flow: navigate to creation editor with course id for editing
+    navigate(`/create/${user?.id}?edit=${course.id}`);
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    setShowDeleteModal(false);
+    try {
+      const res = await apiFetch(`/api/courses/${course.id}`, {
+        method: 'DELETE',
+      });
+
+      if (handleUnauthorized(res, navigate, proAlert)) return;
+
+      if (!res.ok) {
+        const err = await res.json();
+        proAlert.error(err?.error || 'Failed to delete course');
+        return;
+      }
+
+      proAlert.success('Course deleted successfully');
+      // reload page or navigate to refresh list
+      window.location.reload();
+    } catch (error) {
+      console.error('Delete error', error);
+      proAlert.error('Failed to delete course');
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
   };
   return (
     <div
@@ -822,12 +852,12 @@ getJoinedCoursesCourseid(course)
           ):(<>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Progress</span>
-                <span className="text-white font-medium">{joinedBoth?.progress ?? "0%"}</span>
+                <span className="text-white font-medium">{enrollmentProgress}</span>
               </div>
               <div className="w-full bg-slate-700 rounded-full h-2">
                 <div
                   className="bg-gradient-to-r from-cyan-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${joinedBoth?.progress ?? "0%"}` }}
+                  style={{ width: enrollmentProgress }}
                 ></div>
               </div>
             </>)}
@@ -872,9 +902,41 @@ getJoinedCoursesCourseid(course)
               </Link>
                
             )}
+            {isOwner && (
+              <div className="flex items-center space-x-2">
+                <button onClick={handleEdit} className="text-yellow-400 hover:text-yellow-300 text-sm font-medium">Edit</button>
+                <button onClick={handleDeleteClick} className="text-red-400 hover:text-red-300 text-sm font-medium">Delete</button>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-slate-900/90 border border-red-500/30 rounded-2xl px-8 py-6 max-w-md w-full text-center shadow-xl">
+            <h3 className="text-xl font-semibold text-white mb-3">Delete Course?</h3>
+            <p className="text-sm text-gray-300 mb-6">
+              Are you sure you want to delete <span className="font-semibold text-cyan-300">{course.title}</span>? This action cannot be undone and all course data will be permanently removed.
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 text-sm font-medium text-gray-300 bg-white/10 rounded-lg hover:bg-white/15 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:opacity-90 transition-opacity"
+              >
+                Delete Course
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

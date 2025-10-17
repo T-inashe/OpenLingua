@@ -1,4 +1,4 @@
-const { prisma } = require('../lib/prisma');
+const prisma = require('../lib/prisma');
 
 const apiKey = " AIzaSyBS5OACi5JlNTgdLAYNFILd3T8IcYysJOA"; // replace with your real API key
 
@@ -166,27 +166,75 @@ const leaveCourse = async (req, res) => {
 const getCourseDetails = async (req, res) => {
   try {
     const { courseId } = req.params;
+    const userId = req.user?.id;
 
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
-      include: {
-        units: {
-          orderBy: { position: "asc" },
-          include: {
-            lessons: { orderBy: { position: "asc" } }
+    // Single optimized query with all needed data
+    const [course, forumPosts, reviews] = await Promise.all([
+      prisma.course.findUnique({
+        where: { id: courseId },
+        include: {
+          units: {
+            orderBy: { position: "asc" },
+            include: {
+              lessons: { orderBy: { position: "asc" } }
+            }
+          },
+          words: {
+            orderBy: { createdAt: "asc" }
+          },
+          instructor: { 
+            select: { id: true, name: true, avatar: true } 
+          }
+        }
+      }),
+      // Forum posts with author info
+      prisma.forumPost.findMany({
+        where: { courseId },
+        include: {
+          author: {
+            select: { id: true, name: true, email: true, avatar: true }
           }
         },
-        words: {
-          orderBy: { createdAt: "asc" }
+        orderBy: { createdAt: "desc" },
+        take: 50 // Limit to recent posts for performance
+      }),
+      // Reviews with user info
+      prisma.courseReview.findMany({
+        where: { courseId },
+        include: {
+          user: {
+            select: { id: true, name: true, avatar: true }
+          },
+          helpfulVotes: userId ? {
+            where: { userId }
+          } : false
         },
-        forumPosts: true
-      }
-    });
+        orderBy: { createdAt: "desc" },
+        take: 50 // Limit for performance
+      })
+    ]);
 
     if (!course) return res.status(404).json({ error: "Course not found" });
 
-    res.json({ course });
+    // Format reviews to match frontend expectations
+    const formattedReviews = reviews.map(review => ({
+      user: review.user,
+      review: review.content,
+      rating: review.rating,
+      helpfulCount: review.helpfulCount,
+      helpful: review.helpfulVotes && review.helpfulVotes.length > 0,
+      userMarkedHelpFull: review.helpfulVotes && review.helpfulVotes.length > 0,
+      createdAt: review.createdAt
+    }));
+
+    res.json({ 
+      course,
+      forums: forumPosts,
+      reviews: formattedReviews,
+      user: req.user // Include current user data
+    });
   } catch (error) {
+    console.error("Error fetching course details:", error);
     res.status(500).json({ error: "Error fetching course details" });
   }
 };
@@ -222,10 +270,15 @@ const getJoinedCoursesByUserId = async (req, res) => {
       }
     });
 
-    // Return only the course data
-    const courses = joinedCourses.map(entry => entry.course);
+    // Return courses with enrollment info (including progress)
+    const coursesWithProgress = joinedCourses.map(entry => ({
+      ...entry.course,
+      enrollmentId: entry.id,
+      progress: entry.progress,
+      enrolledAt: entry.createdAt
+    }));
 
-    res.json({ courses });
+    res.json({ courses: coursesWithProgress });
   } catch (error) {
     console.error("Error fetching joined courses:", error);
     res.status(500).json({ error: "Error fetching joined courses" });
@@ -378,6 +431,117 @@ const postCourseReview = async (req, res) => {
   }
 };
 
+// Update a course (only instructor can update)
+const updateCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) return res.status(404).json({ error: "Course not found" });
+
+    // req.user comes from passport deserializeUser
+    const userId = req.user && (req.user.id || req.user.userId);
+    if (!userId || course.instructorId !== userId) {
+      return res.status(403).json({ error: "Not authorized to update this course" });
+    }
+
+    const {
+      title,
+      description,
+      language,
+      level,
+      category,
+      hours,
+      public: isPublic,
+      community,
+      discussions,
+      info
+    } = req.body;
+
+    const updated = await prisma.course.update({
+      where: { id: courseId },
+      data: {
+        title: typeof title === 'string' ? title : course.title,
+        description: typeof description === 'string' ? description : course.description,
+        language: typeof language === 'string' ? language : course.language,
+        level: typeof level === 'string' ? level : course.level,
+        category: typeof category === 'string' ? category : course.category,
+        hours: typeof hours === 'string' ? hours : course.hours,
+        public: typeof isPublic !== 'undefined' ? isPublic : course.public,
+        community: typeof community !== 'undefined' ? community : course.community,
+        discussions: typeof discussions !== 'undefined' ? discussions : course.discussions,
+        info: typeof info === 'string' ? info : course.info
+      }
+    });
+
+    res.json({ course: updated });
+  } catch (error) {
+    console.error("Error updating course:", error);
+    res.status(500).json({ error: "Error updating course" });
+  }
+};
+
+// Delete a course (only instructor can delete)
+const deleteCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) return res.status(404).json({ error: "Course not found" });
+
+    const userId = req.user && (req.user.id || req.user.userId);
+    if (!userId || course.instructorId !== userId) {
+      return res.status(403).json({ error: "Not authorized to delete this course" });
+    }
+
+    await prisma.course.delete({ where: { id: courseId } });
+    res.json({ message: "Course deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting course:", error);
+    res.status(500).json({ error: "Error deleting course" });
+  }
+};
+
+// Update course progress for a user
+const updateCourseProgress = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { progress } = req.body;
+    
+    const userId = req.user && (req.user.id || req.user.userId);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    // Validate progress value
+    const progressNum = typeof progress === 'number' ? progress : parseFloat(progress);
+    if (isNaN(progressNum) || progressNum < 0 || progressNum > 100) {
+      return res.status(400).json({ error: "Invalid progress value. Must be between 0 and 100." });
+    }
+
+    // Find or create enrollment
+    const enrollment = await prisma.courseEnrollment.findFirst({
+      where: {
+        userId: userId,
+        courseId: courseId
+      }
+    });
+
+    if (!enrollment) {
+      return res.status(404).json({ error: "User not enrolled in this course" });
+    }
+
+    // Update progress
+    const updated = await prisma.courseEnrollment.update({
+      where: { id: enrollment.id },
+      data: { progress: `${progressNum}%` }
+    });
+
+    res.json({ progress: updated.progress, message: "Progress updated successfully" });
+  } catch (error) {
+    console.error("Error updating progress:", error);
+    res.status(500).json({ error: "Error updating progress" });
+  }
+};
+
 module.exports = {
   createCourse,
   getCourses,
@@ -391,5 +555,8 @@ module.exports = {
   getJoinedCoursesByCourseId,
   translateText,
   getCourseReviews,
-  postCourseReview
+  postCourseReview,
+  updateCourse,
+  deleteCourse,
+  updateCourseProgress
 };

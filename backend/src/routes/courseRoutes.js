@@ -4,7 +4,10 @@ const { createCourse, getCourses, joinCourse, leaveCourse, getCourseDetails,getC
     getJoinedCoursesByCourseId,
     translateText,
     getCourseReviews,
-    postCourseReview
+    postCourseReview,
+    updateCourse,
+    deleteCourse,
+    updateCourseProgress
 } = require("../controllers/courseController");
 
 const router = Router();
@@ -12,6 +15,9 @@ const router = Router();
 router.post("/", createCourse);
 router.get("/", getCourses);
 router.get("/:courseId", authenticate, getCourseDetails);
+router.patch("/:courseId", authenticate, updateCourse);
+router.delete("/:courseId", authenticate, deleteCourse);
+router.patch("/:courseId/progress", authenticate, updateCourseProgress);
 router.post("/:courseId/join", authenticate, joinCourse);
 router.post("/:courseId/leave", authenticate, leaveCourse);
 router.get('/getcourses/:userId', getCoursesByUserId);
