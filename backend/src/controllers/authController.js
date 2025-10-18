@@ -1,201 +1,134 @@
+const prisma = require('../lib/prisma');
 const bcrypt = require('bcryptjs');
-const { prisma } = require('../lib/prisma');
-const { generateTokens } = require('../utils/jwt');
-const { setAuthCookies, clearAuthCookies } = require('../utils/cookies');
 
-const isPrismaError = (error) => {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof error.code === 'string'
-  );
-};
-
-const register = async (req, res) => {
+exports.register = async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
-    if (!email || !password || !name) {
-      return res.status(400).json({ 
-        error: 'Please provide email, password, and name' 
-      });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ 
-        error: 'Please provide a valid email address' 
-      });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ 
-        error: 'Password must be at least 8 characters long' 
-      });
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-
     const existingUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail }
+      where: { email }
     });
 
     if (existingUser) {
-      return res.status(400).json({ 
-        error: 'An account with this email already exists' 
-      });
+      return res.status(400).json({ error: 'User already exists' });
     }
 
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
       data: {
-        email: normalizedEmail,
+        email,
         password: hashedPassword,
-        name: name.trim(),
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
+        name,
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
     });
 
-    const tokens = generateTokens({
-      userId: user.id,
-      email: user.email,
-    });
-
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-
-    res.status(201).json({
-      message: 'Account created successfully!',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
+    req.login(user, (err) => {
+      if (err) {
+        console.error('Login error:', err);
+        return res.status(500).json({ error: 'Registration successful but login failed' });
       }
+      
+      res.status(201).json({
+        message: 'User registered successfully',
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name
+        }
+      });
     });
-
   } catch (error) {
     console.error('Registration error:', error);
-    
-    if (isPrismaError(error)) {
-      if (error.code === 'P2002') {
-        return res.status(400).json({ 
-          error: 'An account with this email already exists' 
-        });
-      }
-    }
-
-    res.status(500).json({ 
-      error: 'Something went wrong during registration. Please try again.' 
-    });
+    res.status(500).json({ error: 'Registration failed' });
   }
 };
 
-const login = async (req, res) => {
+exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ 
-        error: 'Please provide email and password' 
-      });
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-
     const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        password: true,
-      }
+      where: { email }
     });
 
     if (!user || !user.password) {
-      return res.status(401).json({ 
-        error: 'Invalid email or password' 
-      });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ 
-        error: 'Invalid email or password' 
-      });
+    const isValidPassword = await bcrypt.compare(password, user.password);
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const tokens = generateTokens({
-      userId: user.id,
-      email: user.email,
-    });
-
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-
-    res.json({
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
+    req.login(user, (err) => {
+      if (err) {
+        console.error('Login error:', err);
+        return res.status(500).json({ error: 'Login failed' });
       }
+      
+      res.json({
+        message: 'Login successful',
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          avatar: user.avatar
+        }
+      });
     });
-
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ 
-      error: 'Something went wrong during login. Please try again.' 
-    });
+    res.status(500).json({ error: 'Login failed' });
   }
 };
 
-const logout = async (req, res) => {
-  try {
-    clearAuthCookies(res);
-    res.json({ message: 'Logged out successfully' });
-  } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({ 
-      error: 'Something went wrong during logout' 
-    });
+exports.logout = (req, res) => {
+  if (!req.session) {
+    return res.status(400).json({ error: 'No active session' });
   }
-};
 
-const me = async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        avatar: true,
-        createdAt: true,
+  req.logout((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ error: 'Logout failed' });
+    }
+    
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destroy error:', err);
+        return res.status(500).json({ error: 'Logout failed' });
       }
+      
+      res.clearCookie('connect.sid');
+      res.json({ message: 'Logout successful' });
     });
+  });
+};
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+exports.me = async (req, res) => {
+  try {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    res.json({ user });
+    // User is already loaded by passport.deserializeUser
+    // Just return it with selected fields
+    const user = {
+      id: req.user.id,
+      email: req.user.email,
+      name: req.user.name,
+      avatar: req.user.avatar,
+      createdAt: req.user.createdAt,
+      updatedAt: req.user.updatedAt
+    };
+
+    res.json(user);
   } catch (error) {
     console.error('Get user error:', error);
-    res.status(500).json({ 
-      error: 'Something went wrong fetching user data' 
-    });
+    res.status(500).json({ error: 'Failed to get user information' });
   }
-};
-
-module.exports = {
-  register,
-  login,
-  logout,
-  me
 };

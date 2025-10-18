@@ -11,18 +11,196 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  password    String?  // Optional for OAuth users
-  name        String   // Single name field
-  avatar      String?
-  
+  id            String             @id @default(cuid())
+  email         String             @unique
+  password      String?
+  name          String
+  avatar        String?
+  joinedCourses CourseEnrollment[]
+  forumPosts    ForumPost[]
   // OAuth fields
-  googleId    String? @unique
-  microsoftId String? @unique
+  googleId      String?            @unique
+  microsoftId   String?            @unique
+
+  // ✅ Courses taught by this user
+  coursesTaught Course[] @relation("CourseInstructor")
+  courseReviews   CourseReview[]
+  reviewReplies   ReviewReply[]      // ✅ Replies written by user
+  helpfulVotes    ReviewHelpfulVote[] 
+  
+  // ✅ CHAT RELATIONSHIPS - ADD THESE:
+  conversations1 Conversation[] @relation("ConversationParticipant1")
+  conversations2 Conversation[] @relation("ConversationParticipant2")
+  sentMessages   Message[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("users")
+}
+model Session {
+  id        String   @id
+  sid       String   @unique
+  data      String
+  expiresAt DateTime
+
+  @@map("sessions")
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  title     String
+  date      DateTime
+  time      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("events")
+}
+
+model Conversation {
+  id             String    @id @default(cuid())
+  participant1Id String
+  participant2Id String
+  participant1   User      @relation("ConversationParticipant1", fields: [participant1Id], references: [id])
+  participant2   User      @relation("ConversationParticipant2", fields: [participant2Id], references: [id])
+  messages       Message[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([participant1Id, participant2Id])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  content        String
+  senderId       String
+  conversationId String
+  sender         User         @relation(fields: [senderId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("messages")
+}
+
+model Course {
+  id          String @id @default(cuid())
+  title       String
+  language    String
+  description String
+  level       String
+  category    String
+  hours       String
+  public      String
+  community   String
+  discussions String
+  info        String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // ✅ Add the relation name here:
+  instructor   User   @relation("CourseInstructor", fields: [instructorId], references: [id])
+  instructorId String
+
+  words       Word[]
+  units       CourseUnit[]
+  enrollments CourseEnrollment[]
+  forumPosts  ForumPost[]
+  courseReviews  CourseReview[] 
+}
+
+model CourseEnrollment {
+  id       String @id @default(cuid())
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+  progress String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Word {
+  id       String @id @default(cuid())
+  title    String
+  type     String
+  duration String
+  content  String
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CourseUnit {
+  id          String @id @default(cuid())
+  title       String
+  description String?
+  position    Int
+  course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  lessons     CourseLesson[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CourseLesson {
+  id        String @id @default(cuid())
+  title     String
+  type      String
+  duration  Int?
+  content   String?
+  position  Int
+  unit      CourseUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  unitId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  content   String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model CourseReview {
+  id        String   @id @default(cuid())
+  rating    Int
+  review    String?
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  String
+  replies   ReviewReply[]         // ✅ Replies to the review
+  helpfulVotes ReviewHelpfulVote[] // ✅ Users who marked the review as helpful
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+}
+
+model ReviewReply {
+  id         String   @id @default(cuid())
+  content    String
+  author     User     @relation(fields: [authorId], references: [id])
+  authorId   String
+  review     CourseReview @relation(fields: [reviewId], references: [id])
+  reviewId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ReviewHelpfulVote {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  review    CourseReview @relation(fields: [reviewId], references: [id])
+  reviewId  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, reviewId]) // Prevent duplicate helpful votes by same user
 }

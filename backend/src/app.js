@@ -1,53 +1,104 @@
 const express = require('express');
+const session = require('express-session');
+const passport = require('passport');
 const cors = require('cors');
-const helmet = require('helmet');
-const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
+const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
+const prisma = require('./lib/prisma');
 
-const authRoutes = require('./routes/auth');
-const passport = require('./config/passport');
+require('./config/passport');
 
 const app = express();
 
-app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL,
+// CORS configuration - SIMPLIFIED
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://openlingua-gch4g8bsfmhahkhm.eastus-01.azurewebsites.net',
+    'https://nice-beach-0bc35a310.4.azurestaticapps.net'
+  ],
   credentials: true,
-  methods: ['POST', 'GET', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Set-Cookie'],
+  exposedHeaders: ['Set-Cookie']
+};
 
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: "Too many requests, please try again later" }
-});
+app.use(cors(corsOptions));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 50,
-  message: { error: "Too many authorisation attempts, please try again later" }
-});
+// Trust proxy for Azure
+app.set('trust proxy', 1);
 
-app.use(generalLimiter);
+// Session configuration
+app.use(
+  session({
+    name: 'sessionId',
+    secret: process.env.SESSION_SECRET || 'your-super-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    store: new PrismaSessionStore(
+      prisma,
+      {
+        checkPeriod: 2 * 60 * 1000,
+        dbRecordIdIsSessionId: true,
+      }
+    ),
+    cookie: {
+      secure: false, // Set to false for local development
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: 'lax', // Use 'lax' for local development
+      path: '/',
+    },
+    proxy: true
+  })
+);
 
-app.use('/api/auth/login', authLimiter);    
-app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/google', authLimiter);
-
-app.use(express.json({ limit: '10mb' }));
-app.use(cookieParser(process.env.COOKIE_SECRET));
+// Initialize Passport
 app.use(passport.initialize());
+app.use(passport.session());
+
+// Debug middleware - disabled for performance
+// Uncomment for debugging if needed
+// app.use((req, res, next) => {
+//   console.log('=== Request Debug ===');
+//   console.log('Path:', req.path);
+//   console.log('User:', req.user?.email || 'undefined');
+//   console.log('====================');
+//   next();
+// });
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/courses', require('./routes/courseRoutes'));
+app.use('/api/chat', require('./routes/chatRoutes'));
+app.use('/api/event', require('./routes/eventRoutes'));
+app.use('/api/vocab', require('./routes/vocabRoutes'));
+app.use('/api/forum', require('./routes/forumRoutes'));
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Language Learning API is running!', timestamp: new Date().toISOString() });
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    database: 'connected'
+  });
 });
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is healthy' });
+// 404 handler
+app.use((req, res) => {
+  console.log('❌ 404 - Route not found:', req.path);
+  res.status(404).json({ error: 'Not found', path: req.path });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
 module.exports = app;

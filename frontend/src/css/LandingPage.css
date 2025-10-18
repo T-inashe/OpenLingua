@@ -1,0 +1,50 @@
+/* Force dark mode styles for landing page, sign-in, and sign-up */
+.landing-page,
+.signin-page,
+.signup-page {
+  background: linear-gradient(to bottom right, #0f172a, #581c87, #0f172a) !important;
+  color: white !important;
+}
+
+.landing-page *,
+.signin-page *,
+.signup-page * {
+  color: inherit;
+}
+
+/* Override any light theme styles */
+body:has(.landing-page),
+body:has(.signin-page),
+body:has(.signup-page) {
+  background-color: #0f172a !important;
+}
+
+.theme-light .landing-page,
+.theme-light .signin-page,
+.theme-light .signup-page {
+  background: linear-gradient(to bottom right, #0f172a, #581c87, #0f172a) !important;
+}
+
+.theme-light .landing-page *,
+.theme-light .signin-page *,
+.theme-light .signup-page * {
+  color: white !important;
+}
+
+.theme-light .landing-page .text-gray-300,
+.theme-light .signin-page .text-gray-300,
+.theme-light .signup-page .text-gray-300 {
+  color: rgb(209 213 219) !important;
+}
+
+.theme-light .landing-page .text-gray-400,
+.theme-light .signin-page .text-gray-400,
+.theme-light .signup-page .text-gray-400 {
+  color: rgb(156 163 175) !important;
+}
+
+.theme-light .landing-page .text-white,
+.theme-light .signin-page .text-white,
+.theme-light .signup-page .text-white {
+  color: rgb(255 255 255) !important;
+}

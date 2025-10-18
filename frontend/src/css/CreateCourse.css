@@ -1,0 +1,57 @@
+/* CreateCourse.css */
+.create-course {
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #f9f9fc;
+  border-radius: 12px;
+  border: 1px solid #e0d7f7;
+  font-family: "Inter", sans-serif;
+}
+
+.create-course h1 {
+  text-align: center;
+  color: #5b21b6;
+  margin-bottom: 1.5rem;
+}
+
+.create-course form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.create-course label {
+  font-weight: 600;
+  color: #333;
+}
+
+.create-course input,
+.create-course textarea,
+.create-course select {
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+.create-course textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.create-course button {
+  background: #5b21b6;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.create-course button:hover {
+  background: #4c1d95;
+}

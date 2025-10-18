@@ -1,0 +1,71 @@
+name: Azure Static Web Apps CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+
+jobs:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build and Deploy Job
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install & Build (frontend)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build -- --sourcemap=false
+
+      - name: Prune build output (reduce file count)
+        run: |
+          ARTIFACT_DIR="frontend/dist"
+          # Copy config if you keep it in frontend/ (so SWA sees it when deploying dist/)
+          if [ -f frontend/staticwebapp.config.json ]; then
+            cp frontend/staticwebapp.config.json "$ARTIFACT_DIR"/
+          fi
+          # Remove sourcemaps and other noisy files
+          find "$ARTIFACT_DIR" -type f -name "*.map" -delete
+          find "$ARTIFACT_DIR" -type f -name "*.LICENSE.txt" -delete
+          rm -rf "$ARTIFACT_DIR"/mock "$ARTIFACT_DIR"/tests "$ARTIFACT_DIR"/docs || true
+          echo "File count in artifact:" && find "$ARTIFACT_DIR" -type f | wc -l
+          test -f "$ARTIFACT_DIR/index.html" || (echo "index.html missing in dist"; exit 1)
+
+      - name: Deploy prebuilt dist to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WITTY_HILL_0B304211E }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          # Deploy the built files only (prevents Oryx from building and slashes file count)
+          app_location: "frontend/dist"
+          output_location: ""
+          skip_app_build: true
+          # (No api_location since you don't have Functions)
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WITTY_HILL_0B304211E }}
+          action: close
