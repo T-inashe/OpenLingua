@@ -62,20 +62,24 @@ attendingCount: number;
 attending: boolean;
 };
 type QuizOption = {
-  id: number;
+  id: string;
   text: string;
+  isCorrect: boolean;
 };
 
 type QuizQuestion = {
-  id: number;
-  prompt: string;
+  id: string;
+  type: 'multiple-choice' | 'true-false' | 'fill-in-blank';
+  question: string;
   options: QuizOption[];
-  correctOptionId: number;
+  correctAnswer?: string; // For fill-in-blank
   explanation?: string;
 };
 
 type QuizLessonContent = {
-  questions?: QuizQuestion[];
+  questions: QuizQuestion[];
+  passingScore: number;
+  timeLimit?: number;
 };
 interface User {
   id: string;
@@ -114,7 +118,8 @@ const [reviews, setReviews] = useState<Review[]>([
 ]);
 const [completedLessons, setCompletedLessons] = useState<Record<string, boolean>>({});
 const [quizResponses, setQuizResponses] = useState<Record<string, Record<string, {
-  selectedOptionId: number;
+  selectedOptionId?: string;
+  userAnswer?: string; // For fill-in-blank
   isCorrect: boolean;
 }>>>({});
 const progressLoadedRef = useRef(false); // Track if we've loaded progress from storage
@@ -423,8 +428,10 @@ const renderLessonContent = (lesson: CourseLesson) => {
     const lessonKey = lesson.id;
     const lessonResponses = quizResponses[lessonKey] ?? {};
 
-    const handleOptionSelect = (question: QuizQuestion, optionId: number) => {
-      const isCorrectSelection = optionId === question.correctOptionId;
+    const handleOptionSelect = (question: QuizQuestion, optionId: string) => {
+      const selectedOption = question.options.find(opt => opt.id === optionId);
+      const isCorrectSelection = selectedOption?.isCorrect ?? false;
+      
       setQuizResponses((prev) => ({
         ...prev,
         [lessonKey]: {
@@ -437,13 +444,40 @@ const renderLessonContent = (lesson: CourseLesson) => {
       }));
     };
 
+    const handleFillInBlankSubmit = (question: QuizQuestion, answer: string) => {
+      const isCorrect = answer.trim().toLowerCase() === (question.correctAnswer || '').trim().toLowerCase();
+      
+      setQuizResponses((prev) => ({
+        ...prev,
+        [lessonKey]: {
+          ...(prev[lessonKey] ?? {}),
+          [String(question.id)]: {
+            userAnswer: answer,
+            isCorrect: isCorrect,
+          },
+        },
+      }));
+    };
+
     return (
       <div className="mt-4 space-y-6">
+        {/* Quiz Header */}
+        {quizContent.timeLimit && (
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 flex items-center gap-3">
+            <Clock size={20} className="text-blue-400" />
+            <div>
+              <p className="text-white font-medium">Time Limit</p>
+              <p className="text-gray-300 text-sm">{quizContent.timeLimit} minutes</p>
+            </div>
+          </div>
+        )}
+
         {questions.map((question, index) => {
           const response = lessonResponses[String(question.id)];
-          const hasResponse = Boolean(response?.selectedOptionId);
+          const hasResponse = Boolean(response?.selectedOptionId || response?.userAnswer);
           const isCorrect = response?.isCorrect ?? false;
-          const selectedOptionId = response?.selectedOptionId ?? null;
+          const selectedOptionId = response?.selectedOptionId;
+          const userAnswer = response?.userAnswer;
 
           return (
             <div key={question.id} className="rounded-xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20">
@@ -453,66 +487,136 @@ const renderLessonContent = (lesson: CourseLesson) => {
                 </span>
                 <div className="flex-1 space-y-4">
                   <div>
-                    <p className="text-base font-semibold text-white">{question.prompt}</p>
-                    <p className="text-xs uppercase tracking-wide text-white/50">Choose one answer</p>
+                    <p className="text-base font-semibold text-white">{question.question}</p>
+                    <p className="text-xs uppercase tracking-wide text-white/50">
+                      {question.type === 'multiple-choice' ? 'Choose one answer' : 
+                       question.type === 'true-false' ? 'True or False' :
+                       'Fill in the blank'}
+                    </p>
                   </div>
 
-                  <div className="space-y-3">
-                    {question.options.map((option, optionIndex) => {
-                      const optionIsSelected = selectedOptionId === option.id;
-                      const optionIsCorrect = option.id === question.correctOptionId;
-                      const showFeedback = hasResponse;
+                  {/* Multiple Choice & True/False Options */}
+                  {(question.type === 'multiple-choice' || question.type === 'true-false') && (
+                    <div className="space-y-3">
+                      {question.options.map((option, optionIndex) => {
+                        const optionIsSelected = selectedOptionId === option.id;
+                        const optionIsCorrect = option.isCorrect;
+                        const showFeedback = hasResponse;
 
-                      let borderClass = "border-white/10 hover:border-cyan-400/50";
-                      let backgroundClass = "bg-slate-900/60 hover:bg-slate-900/80";
-                      let textClass = "text-white";
+                        let borderClass = "border-white/10 hover:border-cyan-400/50";
+                        let backgroundClass = "bg-slate-900/60 hover:bg-slate-900/80";
+                        let textClass = "text-white";
 
-                      if (showFeedback) {
-                        if (optionIsCorrect) {
-                          borderClass = "border-emerald-400/60";
-                          backgroundClass = "bg-emerald-500/10";
-                          textClass = "text-emerald-200";
+                        if (showFeedback) {
+                          if (optionIsCorrect) {
+                            borderClass = "border-emerald-400/60";
+                            backgroundClass = "bg-emerald-500/10";
+                            textClass = "text-emerald-200";
+                          } else if (optionIsSelected) {
+                            borderClass = "border-rose-400/60";
+                            backgroundClass = "bg-rose-500/10";
+                            textClass = "text-rose-200";
+                          } else {
+                            borderClass = "border-white/10";
+                            backgroundClass = "bg-slate-900/60";
+                            textClass = "text-white/80";
+                          }
                         } else if (optionIsSelected) {
-                          borderClass = "border-rose-400/60";
-                          backgroundClass = "bg-rose-500/10";
-                          textClass = "text-rose-200";
-                        } else {
-                          borderClass = "border-white/10";
-                          backgroundClass = "bg-slate-900/60";
-                          textClass = "text-white/80";
+                          borderClass = "border-cyan-400/60";
+                          backgroundClass = "bg-cyan-500/10";
                         }
-                      } else if (optionIsSelected) {
-                        borderClass = "border-cyan-400/60";
-                        backgroundClass = "bg-cyan-500/10";
-                      }
 
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => handleOptionSelect(question, option.id)}
-                          className={`flex w-full items-center justify-between rounded-lg border ${borderClass} px-4 py-3 text-left transition-colors duration-200 ${backgroundClass}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/5 text-sm font-semibold text-white/80">
-                              {String.fromCharCode(65 + optionIndex)}
-                            </span>
-                            <span className={`text-sm font-medium ${textClass}`}>
-                              {option.text}
-                            </span>
-                          </div>
-                          {showFeedback && optionIsCorrect && (
-                            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-300">Correct</span>
-                          )}
-                          {showFeedback && optionIsSelected && !optionIsCorrect && (
-                            <span className="text-xs font-semibold uppercase tracking-wide text-rose-300">Incorrect</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => handleOptionSelect(question, option.id)}
+                            className={`flex w-full items-center justify-between rounded-lg border ${borderClass} px-4 py-3 text-left transition-colors duration-200 ${backgroundClass}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/5 text-sm font-semibold text-white/80">
+                                {String.fromCharCode(65 + optionIndex)}
+                              </span>
+                              <span className={`text-sm font-medium ${textClass}`}>
+                                {option.text}
+                              </span>
+                            </div>
+                            {showFeedback && optionIsCorrect && (
+                              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-300">Correct</span>
+                            )}
+                            {showFeedback && optionIsSelected && !optionIsCorrect && (
+                              <span className="text-xs font-semibold uppercase tracking-wide text-rose-300">Incorrect</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                  {hasResponse && (
+                  {/* Fill in the Blank */}
+                  {question.type === 'fill-in-blank' && (
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={userAnswer || ''}
+                          onChange={(e) => {
+                            // Allow typing but don't submit yet
+                            const val = e.target.value;
+                            if (!hasResponse) {
+                              // Store temporarily in state without marking as answered
+                              setQuizResponses((prev) => ({
+                                ...prev,
+                                [lessonKey]: {
+                                  ...(prev[lessonKey] ?? {}),
+                                  [String(question.id)]: {
+                                    userAnswer: val,
+                                    isCorrect: false,
+                                  },
+                                },
+                              }));
+                            }
+                          }}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && userAnswer && userAnswer.trim()) {
+                              handleFillInBlankSubmit(question, userAnswer);
+                            }
+                          }}
+                          placeholder="Type your answer here..."
+                          disabled={hasResponse}
+                          className="flex-1 bg-slate-900/60 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-400/50 focus:outline-none disabled:opacity-50"
+                        />
+                        {!hasResponse && userAnswer && userAnswer.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => handleFillInBlankSubmit(question, userAnswer)}
+                            className="px-6 py-3 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition font-medium"
+                          >
+                            Submit
+                          </button>
+                        )}
+                      </div>
+                      {hasResponse && (
+                        <div className={`rounded-lg border px-4 py-3 ${
+                          isCorrect 
+                            ? "border-emerald-400/60 bg-emerald-500/10"
+                            : "border-rose-400/60 bg-rose-500/10"
+                        }`}>
+                          <p className={`text-sm font-medium ${isCorrect ? 'text-emerald-200' : 'text-rose-200'}`}>
+                            Your answer: <span className="font-semibold">{userAnswer}</span>
+                          </p>
+                          {!isCorrect && (
+                            <p className="text-sm text-white/80 mt-1">
+                              Correct answer: <span className="font-semibold text-emerald-300">{question.correctAnswer}</span>
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Feedback */}
+                  {hasResponse && (question.type === 'multiple-choice' || question.type === 'true-false') && (
                     <div
                       className={`rounded-lg border px-4 py-3 text-sm ${
                         isCorrect
@@ -532,11 +636,44 @@ const renderLessonContent = (lesson: CourseLesson) => {
                       )}
                     </div>
                   )}
+
+                  {/* Explanation for fill-in-blank */}
+                  {hasResponse && question.type === 'fill-in-blank' && question.explanation && (
+                    <div className="rounded-lg border border-blue-400/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+                      <p className="font-medium mb-1">Explanation:</p>
+                      <p className="text-xs text-white/80">{question.explanation}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           );
         })}
+
+        {/* Quiz Results Summary */}
+        {Object.keys(lessonResponses).length === questions.length && (
+          <div className="bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-white font-semibold text-lg mb-2">Quiz Complete!</h4>
+                <p className="text-gray-300">
+                  You scored {Object.values(lessonResponses).filter(r => r.isCorrect).length} out of {questions.length}
+                  {' '}({Math.round((Object.values(lessonResponses).filter(r => r.isCorrect).length / questions.length) * 100)}%)
+                </p>
+                {quizContent.passingScore && (
+                  <p className={`text-sm mt-1 ${
+                    (Object.values(lessonResponses).filter(r => r.isCorrect).length / questions.length) * 100 >= quizContent.passingScore
+                      ? 'text-emerald-300'
+                      : 'text-rose-300'
+                  }`}>
+                    Passing score: {quizContent.passingScore}%
+                  </p>
+                )}
+              </div>
+              <Target size={48} className="text-cyan-400" />
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -28,6 +28,8 @@ const CourseCard = ({
   enrollmentProgress = "0%",
 }: CourseCardProps) => {
   const [joinedStudents, setJoinedStudents] = useState<EnrolledCourse[]>([]);
+  const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [reviewCount, setReviewCount] = useState<number>(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const proAlert = useProAlert();
@@ -101,6 +103,40 @@ const CourseCard = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course.id]); // Only re-fetch when course ID changes, not the entire course object
+
+  // Fetch reviews to compute average rating for display on the card
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchRatings = async () => {
+      try {
+        const res = await apiFetch(`/api/courses/reviews/${course.id}?limit=100`, { method: 'GET' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const reviews = data.reviews || [];
+        if (reviews.length === 0) {
+          if (!cancelled) {
+            setAvgRating(null);
+            setReviewCount(0);
+          }
+          return;
+        }
+
+        const total = reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0);
+        const avg = total / reviews.length;
+        if (!cancelled) {
+          setAvgRating(avg);
+          setReviewCount(reviews.length);
+        }
+      } catch (err) {
+        console.error('Failed to load course ratings', err);
+      }
+    };
+
+    fetchRatings();
+
+    return () => { cancelled = true; };
+  }, [course.id]);
 
   const handleJoinClick = async () => {
     if (!user) {
@@ -223,7 +259,8 @@ const CourseCard = ({
 
               <div className="flex items-center space-x-1">
                 <Star size={14} className="text-yellow-500 dark:text-yellow-400" />
-                <span>4.8</span>
+                <span>{avgRating !== null ? avgRating.toFixed(1) : '—'}</span>
+                {reviewCount > 0 && <span className="text-xs text-gray-400 ml-2">({reviewCount})</span>}
               </div>
             </div>
             <span

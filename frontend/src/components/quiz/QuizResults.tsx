@@ -53,11 +53,11 @@ const QuizResults: React.FC<QuizResultsProps> = ({
   const loadAttempts = async () => {
     try {
       setLoading(true);
-      const data = await getQuizAttempts(courseId!, quizId!);
+      const data = await getQuizAttempts(quizId!);
       setAttempts(data.attempts);
       setMaxAttempts(data.maxAttempts);
       setAttemptsRemaining(data.attemptsRemaining);
-      
+
       if (data.attempts.length > 0) {
         setSelectedAttempt(data.attempts[0]); // Show most recent
       }

@@ -26,9 +26,9 @@ app.use(compression({
 const corsOptions = {
   origin: [
     'http://localhost:5173',
-    'http://localhost:3000',
-    'https://openlingua-gch4g8bsfmhahkhm.eastus-01.azurewebsites.net',
-    'https://nice-beach-0bc35a310.4.azurestaticapps.net'
+    'http://localhost:8080',
+    'https://openlingua-gch4g8bsfmhahkhm.southafricanorth-01.azurewebsites.net',
+    'https://witty-hill-0b304211e.2.azurestaticapps.net'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -43,30 +43,39 @@ app.use(express.urlencoded({ extended: true }));
 // Trust proxy for Azure
 app.set('trust proxy', 1);
 
-// Session configuration
-app.use(
-  session({
-    name: 'sessionId',
-    secret: process.env.SESSION_SECRET || 'your-super-secret-key-change-in-production',
-    resave: false,
-    saveUninitialized: false,
-    store: new PrismaSessionStore(
-      prisma,
-      {
-        checkPeriod: 2 * 60 * 1000,
-        dbRecordIdIsSessionId: true,
-      }
-    ),
-    cookie: {
-      secure: false, // Set to false for local development
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000,
-      sameSite: 'lax', // Use 'lax' for local development
-      path: '/',
-    },
-    proxy: true
-  })
-);
+// Session configuration with resilient store initialization
+const sessionOptions = {
+  name: 'sessionId',
+  secret: process.env.SESSION_SECRET || 'your-super-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    // In production (deployed to Azure) we need Secure + SameSite=None
+    // so that cookies are sent on cross-site requests from the static frontend
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/',
+  },
+  proxy: true,
+};
+
+try {
+  // Try to initialize Prisma-backed session store. If the database is
+  // unavailable this may throw; fall back to the default MemoryStore.
+  const prismaStore = new PrismaSessionStore(prisma, {
+    checkPeriod: 2 * 60 * 1000,
+    dbRecordIdIsSessionId: true,
+  });
+  sessionOptions.store = prismaStore;
+  console.log('✅ PrismaSessionStore initialized');
+} catch (err) {
+  console.error('⚠️ PrismaSessionStore initialization failed — falling back to MemoryStore. Error:', err?.message || err);
+  // Do not set sessionOptions.store -> express-session will use MemoryStore
+}
+
+app.use(session(sessionOptions));
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -92,11 +101,20 @@ app.get('/', (req, res) => {
 });
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+app.get('/health', async (req, res) => {
+  let dbStatus = 'unknown';
+  try {
+    // Quick check whether the database is reachable
+    await prisma.$queryRaw('SELECT 1');
+    dbStatus = 'connected';
+  } catch (err) {
+    dbStatus = 'disconnected';
+  }
+
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
-    database: 'connected'
+    database: dbStatus,
   });
 });
 

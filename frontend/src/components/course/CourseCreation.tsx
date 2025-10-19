@@ -17,7 +17,7 @@ import {
   Globe,
   ArrowLeft,
   LogOut,
-  Edit
+  // Edit // Commented out - not needed after quiz tab removal
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
@@ -26,9 +26,32 @@ import { logoutRequest } from "../../utils/logout";
 import ThemeToggle from "../layout/ThemeToggle";
 import { useProAlert } from "../../context/ProAlertContext";
 import { handleUnauthorized } from "../../utils/handleUnauthorized";
-import QuizEditor from "../quiz/QuizEditor";
-import { getCourseQuizzes, deleteQuiz } from "../../services/quizApi";
-import type { Quiz } from "../../services/quizApi";
+// import QuizEditor from "../quiz/QuizEditor"; // Commented out - quiz now part of lesson types
+// import { getCourseQuizzes, deleteQuiz } from "../../services/quizApi"; // Commented out
+// import type { Quiz } from "../../services/quizApi"; // Commented out
+
+// Quiz question types for lesson-based quizzes
+interface QuizOption {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+}
+
+interface QuizQuestion {
+  id: string;
+  type: 'multiple-choice' | 'true-false' | 'fill-in-blank';
+  question: string;
+  options: QuizOption[];
+  correctAnswer?: string; // For fill-in-blank
+  explanation?: string;
+}
+
+interface QuizData {
+  questions: QuizQuestion[];
+  passingScore: number;
+  timeLimit?: number;
+}
+
 interface Lesson {
   id: number;
   title: string;
@@ -92,11 +115,11 @@ const CourseCreation = () => {
   const [loggingOut, setLoggingOut] = useState(false);
   const pendingNavigation = useRef<(() => void | Promise<void>) | null>(null);
 
-  // Quiz management state
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [loadingQuizzes, setLoadingQuizzes] = useState(false);
-  const [showQuizEditor, setShowQuizEditor] = useState(false);
-  const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
+  // Quiz management state - COMMENTED OUT (Quiz now part of lesson types)
+  // const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  // const [loadingQuizzes, setLoadingQuizzes] = useState(false);
+  // const [showQuizEditor, setShowQuizEditor] = useState(false);
+  // const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
 
   // Fetch course data if in edit mode
   useEffect(() => {
@@ -325,7 +348,7 @@ const CourseCreation = () => {
     { id: 2, title: "Structure", icon: Target },
     { id: 3, title: "Content", icon: FileText },
     { id: 4, title: "Settings", icon: Settings },
-    { id: 5, title: "Quizzes", icon: BookOpen }
+    // { id: 5, title: "Quizzes", icon: BookOpen } // Commented out - Quiz now part of lesson types
   ];
 
 
@@ -402,20 +425,29 @@ const CourseCreation = () => {
         ...updatedLesson,
         type: value,
         file: null,
-        content: value === "quiz" ? null : updatedLesson.content ?? "",
+        content: value === "quiz" ? JSON.stringify({ questions: [], passingScore: 70 }) : updatedLesson.content ?? "",
       };
     } else if (field === "content") {
-      if (updatedLesson.type === "quiz") {
-        return;
-      }
+      // Allow content updates for all lesson types, including quiz
       updatedLesson = {
         ...updatedLesson,
         content: typeof value === "string" ? value : updatedLesson.content,
       };
     } else if (field === "duration") {
+      // Ensure duration is a non-negative integer
+      let newDuration = updatedLesson.duration;
+      if (typeof value === 'number') {
+        newDuration = Math.max(0, Math.floor(value));
+      } else if (typeof value === 'string') {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed)) {
+          newDuration = Math.max(0, Math.floor(parsed));
+        }
+      }
+
       updatedLesson = {
         ...updatedLesson,
-        duration: typeof value === "number" ? value : updatedLesson.duration,
+        duration: newDuration,
       };
     } else if (field === "file") {
       updatedLesson = {
@@ -718,7 +750,8 @@ const stopRecording = () => {
   }
 };
 
-  // Quiz management functions
+  // Quiz management functions - COMMENTED OUT (Quiz now part of lesson types)
+  /*
   const loadQuizzes = async () => {
     if (!editCourseId) return;
     
@@ -761,6 +794,7 @@ const stopRecording = () => {
       loadQuizzes();
     }
   }, [activeStep, editCourseId]);
+  */
 
 
   const renderStepContent = () => {
@@ -1091,6 +1125,7 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
 <option value="text">📝 Text Lesson</option>
 <option value="audio">🎵 Audio Lesson</option>
 <option value="video">🎥 Video Lesson</option>
+<option value="quiz">✏️ Quiz</option>
 </select>
 </div>
 </div>
@@ -1104,12 +1139,12 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
   <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">(How long will this lesson take?)</span>
 </label>
 <input
-type="number"
-min="0"
-value={selectedLesson.duration}
-onChange={(e) => updateSelectedLesson("duration", parseInt(e.target.value) || 0)}
-placeholder="e.g., 15"
-className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition"
+  type="number"
+  min="0"
+  value={selectedLesson.duration}
+  onChange={(e) => updateSelectedLesson("duration", e.target.value)}
+  placeholder="e.g., 15"
+  className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition"
 />
 </div>
 )}
@@ -1141,17 +1176,268 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
   )}
 </label>
 {selectedLesson.type === "quiz" ? (
-  <div className="rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 p-4 text-sm text-gray-700 dark:text-cyan-200 flex items-center justify-between gap-4">
-    <span>
-      Quizzes are managed in Step 5 (Quizzes). Use that section to create and manage course quizzes.
-    </span>
-    <button
-      type="button"
-      onClick={() => setActiveStep(5)}
-      className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-sm font-medium text-cyan-600 dark:text-cyan-200 hover:bg-cyan-500/20"
-    >
-      Go to Quizzes
-    </button>
+  // Quiz Builder Interface
+  <div className="space-y-6">
+    {(() => {
+      // Parse quiz data from lesson content
+      let quizData: QuizData;
+      try {
+        quizData = selectedLesson.content ? JSON.parse(selectedLesson.content) : { questions: [], passingScore: 70 };
+      } catch {
+        quizData = { questions: [], passingScore: 70 };
+      }
+
+      const addQuestion = (type: QuizQuestion['type']) => {
+        const newQuestion: QuizQuestion = {
+          id: `q-${Date.now()}`,
+          type,
+          question: '',
+          options: type === 'true-false' 
+            ? [
+                { id: 'true', text: 'True', isCorrect: false },
+                { id: 'false', text: 'False', isCorrect: false }
+              ]
+            : type === 'multiple-choice'
+              ? [
+                  { id: `opt-${Date.now()}-1`, text: '', isCorrect: false },
+                  { id: `opt-${Date.now()}-2`, text: '', isCorrect: false }
+                ]
+              : [],
+          correctAnswer: type === 'fill-in-blank' ? '' : undefined,
+          explanation: ''
+        };
+        quizData.questions.push(newQuestion);
+        updateSelectedLesson('content', JSON.stringify(quizData));
+      };
+
+      const updateQuestion = (questionId: string, field: keyof QuizQuestion, value: any) => {
+        const question = quizData.questions.find(q => q.id === questionId);
+        if (question) {
+          (question as any)[field] = value;
+          updateSelectedLesson('content', JSON.stringify(quizData));
+        }
+      };
+
+      const deleteQuestion = (questionId: string) => {
+        quizData.questions = quizData.questions.filter(q => q.id !== questionId);
+        updateSelectedLesson('content', JSON.stringify(quizData));
+      };
+
+      const addOption = (questionId: string) => {
+        const question = quizData.questions.find(q => q.id === questionId);
+        if (question && question.type === 'multiple-choice') {
+          question.options.push({
+            id: `opt-${Date.now()}`,
+            text: '',
+            isCorrect: false
+          });
+          updateSelectedLesson('content', JSON.stringify(quizData));
+        }
+      };
+
+      const updateOption = (questionId: string, optionId: string, field: keyof QuizOption, value: any) => {
+        const question = quizData.questions.find(q => q.id === questionId);
+        if (question) {
+          const option = question.options.find(o => o.id === optionId);
+          if (option) {
+            if (field === 'isCorrect' && value === true) {
+              // For multiple choice, only one answer can be correct
+              question.options.forEach(o => o.isCorrect = false);
+            }
+            (option as any)[field] = value;
+            updateSelectedLesson('content', JSON.stringify(quizData));
+          }
+        }
+      };
+
+      const deleteOption = (questionId: string, optionId: string) => {
+        const question = quizData.questions.find(q => q.id === questionId);
+        if (question) {
+          question.options = question.options.filter(o => o.id !== optionId);
+          updateSelectedLesson('content', JSON.stringify(quizData));
+        }
+      };
+
+      return (
+        <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-white/10 rounded-lg p-6">
+
+          {/* Questions */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Questions ({quizData.questions.length})
+              </h4>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    addQuestion('multiple-choice');
+                  }}
+                  className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-medium"
+                >
+                  + Multiple Choice
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    addQuestion('true-false');
+                  }}
+                  className="px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium"
+                >
+                  + True/False
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    addQuestion('fill-in-blank');
+                  }}
+                  className="px-3 py-2 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition font-medium"
+                >
+                  + Fill in Blank
+                </button>
+              </div>
+            </div>
+
+            {quizData.questions.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+                <p className="text-gray-500 dark:text-gray-400">
+                  No questions yet. Click a button above to add your first question.
+                </p>
+              </div>
+            ) : (
+              quizData.questions.map((question, qIndex) => (
+                <div
+                  key={question.id}
+                  className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-white/10 rounded-lg p-4"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900 dark:text-white">Q{qIndex + 1}.</span>
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        question.type === 'multiple-choice' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+                        question.type === 'true-false' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                        'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                      }`}>
+                        {question.type === 'multiple-choice' ? 'Multiple Choice' :
+                         question.type === 'true-false' ? 'True/False' : 'Fill in Blank'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => deleteQuestion(question.id)}
+                      className="text-red-500 hover:text-red-600 p-1"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Question
+                      </label>
+                      <input
+                        type="text"
+                        value={question.question}
+                        onChange={(e) => updateQuestion(question.id, 'question', e.target.value)}
+                        placeholder="Enter your question..."
+                        className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    {/* Options for multiple choice and true/false */}
+                    {(question.type === 'multiple-choice' || question.type === 'true-false') && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Options {question.type === 'multiple-choice' && '(select the correct one)'}
+                          </label>
+                          {question.type === 'multiple-choice' && (
+                            <button
+                              type="button"
+                              onClick={() => addOption(question.id)}
+                              className="text-sm text-blue-500 hover:text-blue-600"
+                            >
+                              + Add Option
+                            </button>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          {question.options.map((option) => (
+                            <div key={option.id} className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name={`correct-${question.id}`}
+                                checked={option.isCorrect}
+                                onChange={(e) => updateOption(question.id, option.id, 'isCorrect', e.target.checked)}
+                                className="w-4 h-4 text-green-500"
+                              />
+                              <input
+                                type="text"
+                                value={option.text}
+                                onChange={(e) => updateOption(question.id, option.id, 'text', e.target.value)}
+                                placeholder="Option text..."
+                                className="flex-1 bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded px-3 py-1.5 text-sm text-gray-900 dark:text-white"
+                                disabled={question.type === 'true-false'}
+                              />
+                              {question.type === 'multiple-choice' && question.options.length > 2 && (
+                                <button
+                                  type="button"
+                                  onClick={() => deleteOption(question.id, option.id)}
+                                  className="text-red-500 hover:text-red-600 p-1"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fill in blank answer */}
+                    {question.type === 'fill-in-blank' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Correct Answer
+                        </label>
+                        <input
+                          type="text"
+                          value={question.correctAnswer || ''}
+                          onChange={(e) => updateQuestion(question.id, 'correctAnswer', e.target.value)}
+                          placeholder="Enter the correct answer..."
+                          className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    )}
+
+                    {/* Explanation */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Explanation (optional)
+                      </label>
+                      <textarea
+                        value={question.explanation || ''}
+                        onChange={(e) => updateQuestion(question.id, 'explanation', e.target.value)}
+                        placeholder="Provide an explanation for the answer..."
+                        rows={2}
+                        className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white resize-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      );
+    })()}
   </div>
 ) : selectedLesson.type === "audio" ? (
   // Audio lesson interface
@@ -1506,6 +1792,8 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
           </div>
         );
 
+      // COMMENTED OUT - Quiz now part of lesson types (not a separate step)
+      /*
       case 5:
         return (
           <div className="space-y-6">
@@ -1598,7 +1886,6 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
               </div>
             )}
 
-            {/* Quiz Editor Modal */}
             {showQuizEditor && editCourseId && (
               <div
                 className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
@@ -1625,6 +1912,7 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
             )}
           </div>
         );
+      */
 
       default:
         return null;
@@ -1707,7 +1995,7 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
           {renderStepContent()}
         </div>
 
-        <div className={`flex items-center justify-between mt-8 pt-6 border-t border-white/10 transition-all duration-1000 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'} ${(showQuizEditor || showLeaveModal) ? 'pointer-events-none' : ''}`}>
+        <div className={`flex items-center justify-between mt-8 pt-6 border-t border-white/10 transition-all duration-1000 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'} ${showLeaveModal ? 'pointer-events-none' : ''}`}>
           <button
             onClick={() => setActiveStep(Math.max(1, activeStep - 1))}
             disabled={activeStep === 1}
@@ -1717,7 +2005,7 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
           </button>
 
           <div className="flex space-x-3">
-            {activeStep === 5 ? (
+            {activeStep === 4 ? (
               <button
                 onClick={createCourse}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
@@ -1726,7 +2014,7 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
               </button>
             ) : (
               <button
-                onClick={() => setActiveStep(Math.min(5, activeStep + 1))}
+                onClick={() => setActiveStep(Math.min(4, activeStep + 1))}
                 className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
               >
                 Next Step

@@ -1,11 +1,13 @@
-// Frontend API client for quiz operations hitting the external quiz API (BASE_API_URL)
+// Frontend API client for quiz operations — route requests through backend proxy
 import config from '../config';
 import type { QuizQuestion, QuizData, Quiz, QuizAttempt } from '../types/quiz';
 
+const base = config.BACKEND_URL || '';
+
 const quizFetch = async (path: string, options: RequestInit = {}): Promise<Response> => {
-  const url = `${config.BASE_API_URL}${path}`;
+  const url = `${base}/api${path}`;
   return fetch(url, {
-    credentials: 'omit',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
@@ -14,10 +16,9 @@ const quizFetch = async (path: string, options: RequestInit = {}): Promise<Respo
   });
 };
 
-// Re-export types for convenience to not break existing imports
 export type { QuizQuestion, QuizData, Quiz, QuizAttempt };
 
-// TODO: [QUIZ-API] Create a new quiz for a course
+// Create a new quiz for a course
 export const createQuiz = async (courseId: string, quizData: QuizData): Promise<Quiz> => {
   const response = await quizFetch(`/courses/${courseId}/quizzes`, {
     method: 'POST',
@@ -32,8 +33,8 @@ export const createQuiz = async (courseId: string, quizData: QuizData): Promise<
   return response.json();
 };
 
-// TODO: [QUIZ-API] Get all quizzes for a course
-export const getCourseQuizzes = async (courseId: string): Promise<Quiz[]> => {
+// Get all quizzes for a course — normalize backend shapes for the UI
+export const getCourseQuizzes = async (courseId: string): Promise<any> => {
   const response = await quizFetch(`/courses/${courseId}/quizzes`);
 
   if (!response.ok) {
@@ -41,10 +42,25 @@ export const getCourseQuizzes = async (courseId: string): Promise<Quiz[]> => {
     throw new Error(error.error || 'Failed to fetch quizzes');
   }
 
-  return response.json();
+  const body = await response.json();
+
+  // Backend usually returns { quizzes: [...] } or { quizzes: [...], mode }
+  if (Array.isArray(body)) {
+    return body;
+  }
+
+  if (body && body.quizzes) {
+    return {
+      mode: body.mode || 'online',
+      data: body.quizzes,
+    };
+  }
+
+  // Fallback: return as-is
+  return body;
 };
 
-// TODO: [QUIZ-API] Get a specific quiz with questions
+// Get a specific quiz with questions (cached or proxied from external API)
 export const getQuiz = async (courseId: string, quizId: string): Promise<Quiz> => {
   const response = await quizFetch(`/courses/${courseId}/quizzes/${quizId}`);
 
@@ -56,21 +72,36 @@ export const getQuiz = async (courseId: string, quizId: string): Promise<Quiz> =
   return response.json();
 };
 
-// TODO: [QUIZ-API] Submit a quiz attempt
+// Start a quiz session (server will attempt external API and fall back to cached data)
+export const startQuizSession = async (quizId: string): Promise<any> => {
+  const response = await quizFetch(`/quiz-sessions/${quizId}/start`, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to start quiz session');
+  }
+
+  return response.json();
+};
+
+// Submit a quiz attempt using server session endpoint — include sessionId when available
 export const submitQuizAttempt = async (
-  courseId: string,
   quizId: string,
   answers: Record<string, string>,
   startedAt: string,
-  completedAt: string
+  completedAt: string,
+  sessionId?: string | null,
+  timeSpent?: number
 ): Promise<QuizAttempt> => {
-  const response = await quizFetch(`/courses/${courseId}/quizzes/${quizId}/attempts`, {
+  const payload: any = { answers, startedAt, completedAt };
+  if (sessionId) payload.sessionId = sessionId;
+  if (typeof timeSpent === 'number') payload.timeSpent = timeSpent;
+
+  const response = await quizFetch(`/quiz-sessions/${quizId}/submit`, {
     method: 'POST',
-    body: JSON.stringify({
-      answers,
-      startedAt,
-      completedAt,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -81,16 +112,12 @@ export const submitQuizAttempt = async (
   return response.json();
 };
 
-// TODO: [QUIZ-API] Get student's quiz attempts
+// Get quiz attempts / results
 export const getQuizAttempts = async (
-  courseId: string,
   quizId: string,
   userId?: string
 ): Promise<{ attempts: QuizAttempt[]; maxAttempts: number; attemptsRemaining: number }> => {
-  const url = userId
-    ? `/courses/${courseId}/quizzes/${quizId}/attempts?userId=${userId}`
-    : `/courses/${courseId}/quizzes/${quizId}/attempts`;
-
+  const url = `/quiz-sessions/${quizId}/results${userId ? `?userId=${userId}` : ''}`;
   const response = await quizFetch(url);
 
   if (!response.ok) {
@@ -101,7 +128,7 @@ export const getQuizAttempts = async (
   return response.json();
 };
 
-// TODO: [QUIZ-API] Update a quiz (instructor only)
+// Update a quiz (instructor only)
 export const updateQuiz = async (
   courseId: string,
   quizId: string,
@@ -120,7 +147,7 @@ export const updateQuiz = async (
   return response.json();
 };
 
-// TODO: [QUIZ-API] Delete a quiz (instructor only)
+// Delete a quiz (instructor only)
 export const deleteQuiz = async (courseId: string, quizId: string): Promise<void> => {
   const response = await quizFetch(`/courses/${courseId}/quizzes/${quizId}`, {
     method: 'DELETE',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useProAlert } from '../../context/ProAlertContext';
-import { getQuiz, submitQuizAttempt } from '../../services/quizApi';
+import { getQuiz, submitQuizAttempt, startQuizSession } from '../../services/quizApi';
 import type { Quiz as QuizApiType, QuizQuestion as QuizQuestionType } from '../../types/quiz';
 
 // Local interface with required questions array
@@ -26,6 +26,7 @@ const QuizTaker: React.FC<QuizTakerProps> = ({ courseId: propCourseId, quizId: p
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [startTime] = useState(new Date().toISOString());
@@ -57,15 +58,42 @@ const QuizTaker: React.FC<QuizTakerProps> = ({ courseId: propCourseId, quizId: p
   const loadQuiz = async () => {
     try {
       setLoading(true);
+
+      // Prefer starting a server-side session which may return online/offline quiz payload
+      try {
+        const startResp = await startQuizSession(quizId);
+        // startResp.session contains id and quiz payload per backend
+        if (startResp && startResp.session) {
+          setSessionId(startResp.session.id || null);
+          const quizData = startResp.session.quiz;
+
+          if (!quizData || !quizData.questions || quizData.questions.length === 0) {
+            throw new Error('This quiz has no questions');
+          }
+
+          setQuiz(quizData as Quiz);
+
+          if (quizData.timeLimit) {
+            setTimeRemaining(quizData.timeLimit * 60);
+          }
+
+          return;
+        }
+      } catch (startErr: any) {
+        // Starting session failed — we'll fallback to fetching quiz details (cached)
+        console.warn('startQuizSession failed, falling back to getQuiz:', startErr?.message || startErr);
+      }
+
+      // Fallback: fetch quiz details directly (cached data path)
       const quizData = await getQuiz(courseId, quizId);
-      
+
       // Ensure questions array exists
       if (!quizData.questions || quizData.questions.length === 0) {
         throw new Error('This quiz has no questions');
       }
-      
+
       setQuiz(quizData as Quiz);
-      
+
       // Initialize timer if time limit is set
       if (quizData.timeLimit) {
         setTimeRemaining(quizData.timeLimit * 60); // Convert minutes to seconds
@@ -114,11 +142,12 @@ const QuizTaker: React.FC<QuizTakerProps> = ({ courseId: propCourseId, quizId: p
       const completedAt = new Date().toISOString();
       
       const result = await submitQuizAttempt(
-        courseId,
         quizId,
         answers,
         startTime,
-        completedAt
+        completedAt,
+        sessionId,
+        undefined
       );
 
       const percentage = result.percentage || result.score;

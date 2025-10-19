@@ -22,6 +22,55 @@ html:not(.dark) .text-white\/80 {
   color: rgba(15, 23, 42, 0.8) !important;
 }
 
+/* Ensure other white variants used in components are mapped in light mode */
+html:not(.dark) .text-white\/90 {
+  color: rgba(15, 23, 42, 0.9) !important;
+}
+
+/* Make native selects and option text readable in both themes. Some browsers render
+   the dropdown using platform styles; forcing color on select/option helps avoid
+   white-on-white or white-on-light issues on desktops. */
+select,
+select option {
+  color: inherit;
+}
+
+html.dark select,
+html.dark select option {
+  color: #ffffff !important;
+}
+
+html:not(.dark) select,
+html:not(.dark) select option {
+  color: #0f172a !important;
+}
+
+/* Force option background colors as some desktop browsers render
+   dropdown menus with platform styles that can make text unreadable.
+   We explicitly set backgrounds for options in both themes. */
+html.dark select option {
+  background-color: #0f172a !important;
+}
+
+html:not(.dark) select option {
+  background-color: #ffffff !important;
+}
+
+/* Only in light mode: improve specificity for selects that use Tailwind utility
+   classes like bg-white/5 so the native options remain readable without
+   affecting dark-mode closed selects. */
+html:not(.dark) select.bg-white\/5,
+html:not(.dark) select.bg-white\/10 {
+  background-color: rgba(255,255,255,0.95) !important;
+  color: #0f172a !important;
+}
+
+/* In dark mode, ensure selects using text-white keep white text; don't force
+   white text globally which can break light mode. */
+html.dark select.text-white {
+  color: #ffffff !important;
+}
+
 html:not(.dark) .text-gray-400 {
   color: #475569 !important;
 }
@@ -100,3 +149,29 @@ html:not(.dark) .landing-page .border-white\/10 {
 html:not(.dark) .landing-page .border-white\/15 {
   border-color: rgba(255, 255, 255, 0.15) !important;
 }
+
+/* Cursor normalization
+   Prevent the text caret from appearing when clicking plain/non-editable text
+   while keeping proper cursors for interactive elements (links, buttons, inputs).
+*/
+/* Default to the regular arrow cursor everywhere */
+/* Scope cursor rules to the app root to avoid affecting host pages/tools */
+#root, #root * {
+  cursor: default !important;
+}
+
+/* Restore pointer for interactive controls and clickable areas */
+a, button, summary, [role="button"], [role="link"], .cursor-pointer {
+  cursor: pointer !important;
+}
+
+/* Inputs, textareas and contenteditable need the text caret */
+input[type="text"], input[type="number"], input[type="email"], input[type="password"], textarea, [contenteditable="true"] {
+  cursor: text !important;
+}
+
+/* Selects show default/auto cursor but pointer on hover for clarity */
+select, option {
+  cursor: default !important;
+}
+

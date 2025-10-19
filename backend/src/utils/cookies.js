@@ -1,8 +1,8 @@
 const COOKIE_OPTIONS = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', 
-    sameSite: 'lax',
-    path: '/',
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  path: '/',
 };
 
 const setAuthCookies = (res, accessToken, refreshToken) => {
@@ -18,6 +18,7 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
 };
 
 const clearAuthCookies = (res) => {
+    // When clearing cookies, ensure options match how they were set (path, sameSite, secure)
     res.clearCookie('accessToken', COOKIE_OPTIONS);
     res.clearCookie('refreshToken', COOKIE_OPTIONS);
 };

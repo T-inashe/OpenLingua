@@ -3,16 +3,20 @@ import { Search } from "lucide-react";
 interface CourseFiltersProps {
   searchQuery: string;
   difficultyFilter: string;
+  sortBy: string;
   onSearchChange: (query: string) => void;
   onDifficultyChange: (difficulty: string) => void;
+  onSortChange: (sortBy: string) => void;
   isVisible: boolean;
 }
 
 const CourseFilters = ({
   searchQuery,
   difficultyFilter,
+  sortBy,
   onSearchChange,
   onDifficultyChange,
+  onSortChange,
   isVisible,
 }: CourseFiltersProps) => {
   return (
@@ -36,7 +40,7 @@ const CourseFilters = ({
           />
         </div>
 
-        <div className="flex space-x-3">
+        <div className="flex space-x-3 items-center">
           <select
             value={difficultyFilter}
             onChange={(e) => onDifficultyChange(e.target.value)}
@@ -46,6 +50,14 @@ const CourseFilters = ({
             <option value="beginner">Beginner</option>
             <option value="intermediate">Intermediate</option>
             <option value="advanced">Advanced</option>
+          </select>
+          <select
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value)}
+            className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg px-3 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-all duration-200"
+          >
+            <option value="recent">Most recent</option>
+            <option value="enrolled">Most enrolled</option>
           </select>
         </div>
       </div>

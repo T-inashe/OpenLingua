@@ -5,6 +5,7 @@ import DashboardHeader from "./dashboard/DashboardHeader";
 import DashboardSidebar from "./dashboard/DashboardSidebar";
 import DashboardStats from "./dashboard/DashboardStats";
 import CourseFilters from "./dashboard/CourseFilters";
+import DashboardSettings from "./dashboard/DashboardSettings";
 import CourseCard from "./dashboard/CourseCard";
 import { useDashboardData } from "../hooks/useDashboardData";
 import type { SidebarItem } from "../types/dashboard.types";
@@ -13,6 +14,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("");
+  const [sortBy, setSortBy] = useState<string>("recent");
   const [isVisible, setIsVisible] = useState(false);
 
   const {
@@ -90,12 +92,31 @@ const Dashboard = () => {
     });
   }, [allCourses, difficultyFilter, searchQuery]);
 
+  // Apply sorting after filtering
+  const sortedCourses = useMemo(() => {
+    const copy = [...filteredCourses];
+    if (sortBy === 'enrolled') {
+      // courses may have _count.enrollments from backend; otherwise fallback to 0
+      copy.sort((a, b) => {
+        const aCount = (a as any)._count?.enrollments || 0;
+        const bCount = (b as any)._count?.enrollments || 0;
+        return bCount - aCount; // descending
+      });
+    } else {
+      // recent: sort by createdAt desc
+      copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    return copy;
+  }, [filteredCourses, sortBy]);
+
   const handleLogoutSuccess = () => {
     resetUserData();
   };
 
   const renderCourseGrid = () => {
-    let coursesToRender = filteredCourses;
+    // For the main overview tab use the pre-sorted list, otherwise fall back to
+    // enrolled/my-created lists as before.
+    let coursesToRender = activeTab === 'overview' ? sortedCourses : filteredCourses;
     let emptyMessage = "No courses available yet.";
 
     if (activeTab === "my-courses") {
@@ -158,8 +179,10 @@ const Dashboard = () => {
           <CourseFilters
             searchQuery={searchQuery}
             difficultyFilter={difficultyFilter}
+            sortBy={sortBy}
             onSearchChange={setSearchQuery}
             onDifficultyChange={setDifficultyFilter}
+            onSortChange={setSortBy}
             isVisible={isVisible}
           />
 
@@ -168,7 +191,13 @@ const Dashboard = () => {
               isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             }`}
           >
-            {renderCourseGrid()}
+            {activeTab === 'settings' ? (
+              <div className="col-span-full">
+                <DashboardSettings />
+              </div>
+            ) : (
+              renderCourseGrid()
+            )}
           </div>
         </div>
       </div>

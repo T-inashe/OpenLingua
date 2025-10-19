@@ -577,7 +577,8 @@ const updateCourse = async (req, res) => {
       public: isPublic,
       community,
       discussions,
-      info
+      info,
+      units
     } = req.body;
 
     // If title is being changed, check if new title already exists
@@ -614,19 +615,58 @@ const updateCourse = async (req, res) => {
       }
     }
 
+    // Prepare update data
+    const updateData = {
+      title: typeof title === 'string' ? title : course.title,
+      description: typeof description === 'string' ? description : course.description,
+      language: typeof language === 'string' ? language : course.language,
+      level: typeof level === 'string' ? level : course.level,
+      category: typeof category === 'string' ? category : course.category,
+      hours: typeof hours === 'string' ? hours : course.hours,
+      public: typeof isPublic !== 'undefined' ? isPublic : course.public,
+      community: typeof community !== 'undefined' ? community : course.community,
+      discussions: typeof discussions !== 'undefined' ? discussions : course.discussions,
+      info: typeof info === 'string' ? info : course.info
+    };
+
+    // If units are provided, update course structure
+    if (Array.isArray(units)) {
+      // Delete existing units and lessons (cascade delete will handle lessons)
+      await prisma.courseUnit.deleteMany({
+        where: { courseId: courseId }
+      });
+
+      // Create new units with lessons
+      updateData.units = {
+        create: units.map((unit, unitIndex) => ({
+          title: unit.title,
+          description: unit.description,
+          position: typeof unit.position === "number" ? unit.position : unitIndex,
+          lessons: {
+            create: (unit.lessons || []).map((lesson, lessonIndex) => ({
+              title: lesson.title,
+              type: lesson.type,
+              duration: typeof lesson.duration === "number" && Number.isFinite(lesson.duration)
+                ? lesson.duration
+                : null,
+              content: lesson.content ?? null,
+              position: typeof lesson.position === "number" ? lesson.position : lessonIndex
+            }))
+          }
+        }))
+      };
+    }
+
     const updated = await prisma.course.update({
       where: { id: courseId },
-      data: {
-        title: typeof title === 'string' ? title : course.title,
-        description: typeof description === 'string' ? description : course.description,
-        language: typeof language === 'string' ? language : course.language,
-        level: typeof level === 'string' ? level : course.level,
-        category: typeof category === 'string' ? category : course.category,
-        hours: typeof hours === 'string' ? hours : course.hours,
-        public: typeof isPublic !== 'undefined' ? isPublic : course.public,
-        community: typeof community !== 'undefined' ? community : course.community,
-        discussions: typeof discussions !== 'undefined' ? discussions : course.discussions,
-        info: typeof info === 'string' ? info : course.info
+      data: updateData,
+      include: {
+        units: {
+          orderBy: { position: "asc" },
+          include: {
+            lessons: { orderBy: { position: "asc" } }
+          }
+        }
       }
     });
 

@@ -103,7 +103,14 @@ exports.logout = (req, res) => {
         return res.status(500).json({ error: 'Logout failed' });
       }
       
-      res.clearCookie('connect.sid');
+      // clear the session cookie by name used in session configuration
+      // session middleware in app.js sets the cookie name to 'sessionId'
+      res.clearCookie('sessionId', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+      });
       res.json({ message: 'Logout successful' });
     });
   });
@@ -130,5 +137,30 @@ exports.me = async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user information' });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const userId = req.user.id;
+    const { name, avatar } = req.body;
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: typeof name === 'string' ? name : undefined,
+        avatar: typeof avatar === 'string' ? avatar : undefined,
+      },
+      select: { id: true, name: true, avatar: true, email: true }
+    });
+
+    res.json({ user: updated });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 };

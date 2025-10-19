@@ -71,6 +71,79 @@ router.delete(
 // ==================== QUIZ SESSION ROUTES ====================
 // (Students and Instructors)
 
+// --- Legacy adapter routes (accept older frontend paths) ------------------
+// These map /courses/:courseId/quizzes/:quizId/... to the unified quiz-sessions
+// handlers so older clients keep working.
+
+// Start a quiz session (legacy path)
+router.post(
+  "/courses/:courseId/quizzes/:quizId/start",
+  logQuizOperation('start_quiz_session_legacy'),
+  async (req, res, next) => {
+    const { prisma } = require('../lib/prisma');
+    try {
+      const { courseId, quizId } = req.params;
+      const quiz = await prisma.courseQuiz.findUnique({ where: { id: quizId }, select: { courseId: true } });
+      if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+      if (String(quiz.courseId) !== String(courseId)) return res.status(400).json({ error: 'Course/quiz mismatch' });
+      req.params.quizId = quizId;
+      req.params.courseId = courseId;
+      next();
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to validate quiz' });
+    }
+  },
+  validateQuizAccess,
+  quizSessionController.startQuizSession.bind(quizSessionController)
+);
+
+// Submit quiz answers (legacy path)
+router.post(
+  "/courses/:courseId/quizzes/:quizId/attempts",
+  logQuizOperation('submit_quiz_legacy'),
+  validateQuizSubmission,
+  async (req, res, next) => {
+    const { prisma } = require('../lib/prisma');
+    try {
+      const { courseId, quizId } = req.params;
+      const quiz = await prisma.courseQuiz.findUnique({ where: { id: quizId }, select: { courseId: true } });
+      if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+      if (String(quiz.courseId) !== String(courseId)) return res.status(400).json({ error: 'Course/quiz mismatch' });
+      req.params.quizId = quizId;
+      req.params.courseId = courseId;
+      next();
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to validate quiz' });
+    }
+  },
+  validateQuizAccess,
+  quizSessionController.submitQuizAnswers.bind(quizSessionController)
+);
+
+// Get quiz results / attempts (legacy path)
+router.get(
+  "/courses/:courseId/quizzes/:quizId/attempts",
+  logQuizOperation('get_quiz_results_legacy'),
+  async (req, res, next) => {
+    const { prisma } = require('../lib/prisma');
+    try {
+      const { courseId, quizId } = req.params;
+      const quiz = await prisma.courseQuiz.findUnique({ where: { id: quizId }, select: { courseId: true } });
+      if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+      if (String(quiz.courseId) !== String(courseId)) return res.status(400).json({ error: 'Course/quiz mismatch' });
+      req.params.quizId = quizId;
+      req.params.courseId = courseId;
+      next();
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to validate quiz' });
+    }
+  },
+  validateQuizAccess,
+  quizSessionController.getQuizResults.bind(quizSessionController)
+);
+
+// ---------------------------------------------------------------------------
+
 // Start a quiz session
 router.post(
   "/quiz-sessions/:quizId/start",
@@ -161,6 +234,38 @@ router.get(
   logQuizOperation('health_check'),
   quizProxyController.checkApiHealth.bind(quizProxyController)
 );
+
+// ------------------- Legacy / adapter routes -------------------
+// These adapter routes accept older frontend paths and forward to
+// the unified quiz-session controllers so we don't need to change
+// existing frontend consumers.
+
+// Start a quiz session (legacy frontend path)
+router.post(
+  "/courses/:courseId/quizzes/:quizId/start",
+  logQuizOperation('start_quiz_session_adapter'),
+  // validate access for this course/quiz
+  validateQuizAccess,
+  quizSessionController.startQuizSession.bind(quizSessionController)
+);
+
+// Submit quiz answers (legacy frontend path: POST attempts)
+router.post(
+  "/courses/:courseId/quizzes/:quizId/attempts",
+  logQuizOperation('submit_quiz_adapter'),
+  validateQuizSubmission,
+  validateQuizAccess,
+  quizSessionController.submitQuizAnswers.bind(quizSessionController)
+);
+
+// Get quiz attempts / results (legacy frontend path: GET attempts)
+router.get(
+  "/courses/:courseId/quizzes/:quizId/attempts",
+  logQuizOperation('get_quiz_results_adapter'),
+  validateQuizAccess,
+  quizSessionController.getQuizResults.bind(quizSessionController)
+);
+
 
 // ==================== QUIZ SHARING & TEMPLATES ROUTES ====================
 

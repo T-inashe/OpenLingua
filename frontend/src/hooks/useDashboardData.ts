@@ -217,8 +217,15 @@ export const useDashboardData = () => {
 
     loadInitialData();
 
+    // Listen for profile updates so different parts of the app can refresh user data
+    const onUserUpdated = () => {
+      getUser().catch((err) => console.error('Failed to refresh user after update', err));
+    };
+    window.addEventListener('user:updated', onUserUpdated);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('user:updated', onUserUpdated);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
