@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">92% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>22/22</span>
+                <span class='fraction'>23/25</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">50% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>1/2</span>
+                <span class='fraction'>4/8</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">92% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>22/22</span>
+                <span class='fraction'>23/25</span>
             </div>
         
             
@@ -125,10 +125,25 @@
 <a name='L60'></a><a href='#L60'>60</a>
 <a name='L61'></a><a href='#L61'>61</a>
 <a name='L62'></a><a href='#L62'>62</a>
-<a name='L63'></a><a href='#L63'>63</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">7x</span>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -168,6 +183,13 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -191,47 +213,58 @@
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const prisma = require('../lib/prisma');
 &nbsp;
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL || <span class="branch-1 cbranch-no" title="branch not covered" >'http://localhost:8080/auth/google/callback',</span>
-      proxy: true
-    },
-    async (accessToken, refreshToken, profile, done) =&gt; {
-      try {
-        const email = profile.emails[0].value;
-        const googleId = profile.id;
-        const name = profile.displayName;
-        const avatar = profile.photos[0]?.value;
+// Only initialize GoogleStrategy if required env vars are present.
+// This prevents the module from throwing during tests or in environments
+// where Google OAuth credentials aren't configured (for example, CI).
+if (process.env.GOOGLE_CLIENT_ID &amp;&amp; process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL || <span class="branch-1 cbranch-no" title="branch not covered" >'http://localhost:8080/auth/google/callback',</span>
+        proxy: true
+      },
+      async (accessToken, refreshToken, profile, done) =&gt; {
+        try {
+          const email = profile.emails[0].value;
+          const googleId = profile.id;
+          const name = profile.displayName;
+          const avatar = profile.photos[0]?.value;
 &nbsp;
-        const user = await prisma.user.upsert({
-          where: { googleId: googleId },
-          update: {
-            name: name,
-            avatar: avatar,
-            email: email,
-            updatedAt: new Date()
-          },
-          create: {
-            email: email,
-            name: name,
-            avatar: avatar,
-            googleId: googleId,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }
-        });
+          const user = await prisma.user.upsert({
+            where: { googleId: googleId },
+            update: {
+              name: name,
+              avatar: avatar,
+              email: email,
+              updatedAt: new Date()
+            },
+            create: {
+              email: email,
+              name: name,
+              avatar: avatar,
+              googleId: googleId,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+          });
 &nbsp;
-        return done(null, user);
-      } catch (error) {
-        console.error('❌ Error in Google Strategy:', error);
-        return done(error, null);
+          return done(null, user);
+        } catch (error) {
+          console.error('❌ Error in Google Strategy:', error);
+          return done(error, null);
+        }
       }
-    }
-  )
-);
+    )
+  );
+} else <span class="missing-if-branch" title="else path not taken" >E</span>{
+  // If env vars are missing, log a helpful message in non-test environments.
+<span class="cstat-no" title="statement not covered" >  if (process.env.NODE_ENV !== 'test') {</span>
+    // eslint-disable-next-line no-console
+<span class="cstat-no" title="statement not covered" >    console.warn('Google OAuth not configured: GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing.');</span>
+  }
+}
 &nbsp;
 passport.serializeUser((user, done) =&gt; {
   done(null, user.id);
@@ -256,7 +289,7 @@ module.exports = passport;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-19T17:39:39.388Z
+                at 2025-10-19T22:09:11.231Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

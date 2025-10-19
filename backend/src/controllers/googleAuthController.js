@@ -1,10 +1,10 @@
-const passport = require('../config/passport');
 const { generateTokens } = require('../utils/jwt');
 const { setAuthCookies } = require('../utils/cookies');
 
 // Initiate Google OAuth flow
 exports.googleAuth = (req, res, next) => {
-  console.log('Initiating Google OAuth...');
+  // Require passport at call-time so tests can mock the module via jest.mock
+  const passport = require('../config/passport');
   return passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
 };
 
@@ -14,6 +14,9 @@ exports.googleCallback = (req, res, next) => {
   const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
   const SIGNIN_PATH = process.env.FRONTEND_SIGNIN_PATH || '/signin';
   const DASHBOARD_PATH = process.env.FRONTEND_DASHBOARD_PATH || '/dashboard';
+
+  // Require passport at call-time so tests can mock the module via jest.mock
+  const passport = require('../config/passport');
 
   return passport.authenticate('google', { session: false }, async (err, user, info) => {
     if (err) {
