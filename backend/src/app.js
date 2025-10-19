@@ -83,6 +83,8 @@ if (process.env.DEBUG === 'true') {
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/courses', require('./routes/courseRoutes'));
+app.use('/api/chat', require('./routes/chatRoutes'));
+app.use('/api/event', require('./routes/eventRoutes'));
 app.use('/api/vocab', require('./routes/vocabRoutes'));
 app.use('/api/forum', require('./routes/forumRoutes'));
 app.use("/api", quizRoutes);

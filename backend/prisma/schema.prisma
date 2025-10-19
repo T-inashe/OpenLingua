@@ -8,25 +8,34 @@ datasource db {
 }
 
 model User {
-  id                                                String              @id @default(cuid())
-  email                                             String              @unique
-  password                                          String?
-  name                                              String
-  avatar                                            String?
-  googleId                                          String?             @unique
-  microsoftId                                       String?             @unique
-  createdAt                                         DateTime            @default(now())
-  updatedAt                                         DateTime            @updatedAt
-  coursesTaught                                     Course[]            @relation("CourseInstructor")
-  joinedCourses                                     CourseEnrollment[]
-  courseReviews                                     CourseReview[]
-  forumPosts                                        ForumPost[]
-  QuizResult                                        QuizResult[]
-  helpfulVotes                                      ReviewHelpfulVote[]
-  reviewReplies                                     ReviewReply[]
-  conversations_conversations_participant1IdTousers conversations[]     @relation("conversations_participant1IdTousers")
-  conversations_conversations_participant2IdTousers conversations[]     @relation("conversations_participant2IdTousers")
-  messages                                          messages[]
+  id            String             @id @default(cuid())
+  email         String             @unique
+  password      String?
+  name          String
+  avatar        String?
+  joinedCourses CourseEnrollment[]
+  forumPosts    ForumPost[]
+  googleId      String?            @unique
+  microsoftId   String?            @unique
+
+  // Courses taught
+  coursesTaught Course[] @relation("CourseInstructor")
+
+  // Reviews / Replies / Votes
+  courseReviews   CourseReview[]
+  reviewReplies   ReviewReply[]
+  helpfulVotes    ReviewHelpfulVote[]
+
+  // Chat
+  conversations1 Conversation[] @relation("ConversationParticipant1")
+  conversations2 Conversation[] @relation("ConversationParticipant2")
+  sentMessages   Message[]
+
+  // ✅ Add this to fix error
+  quizResults QuizResult[] @relation("StudentQuizResults")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
 }
@@ -38,6 +47,44 @@ model Session {
   expiresAt DateTime
 
   @@map("sessions")
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  title     String
+  date      DateTime
+  time      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("events")
+}
+
+model Conversation {
+  id             String    @id @default(cuid())
+  participant1Id String
+  participant2Id String
+  participant1   User      @relation("ConversationParticipant1", fields: [participant1Id], references: [id])
+  participant2   User      @relation("ConversationParticipant2", fields: [participant2Id], references: [id])
+  messages       Message[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([participant1Id, participant2Id])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  content        String
+  senderId       String
+  conversationId String
+  sender         User         @relation(fields: [senderId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("messages")
 }
 
 model Course {
@@ -180,39 +227,6 @@ model ReviewHelpfulVote {
   @@unique([userId, reviewId])
 }
 
-model conversations {
-  id                                        String     @id
-  participant1Id                            String
-  participant2Id                            String
-  createdAt                                 DateTime   @default(now())
-  updatedAt                                 DateTime
-  users_conversations_participant1IdTousers User       @relation("conversations_participant1IdTousers", fields: [participant1Id], references: [id])
-  users_conversations_participant2IdTousers User       @relation("conversations_participant2IdTousers", fields: [participant2Id], references: [id])
-  messages                                  messages[]
-
-  @@unique([participant1Id, participant2Id])
-}
-
-model events {
-  id        String   @id
-  title     String
-  date      DateTime
-  time      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-}
-
-model messages {
-  id             String        @id
-  content        String
-  senderId       String
-  conversationId String
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime
-  conversations  conversations @relation(fields: [conversationId], references: [id])
-  users          User          @relation(fields: [senderId], references: [id])
-}
-
 model CourseQuiz {
   id             String       @id @default(cuid())
   courseId       String
@@ -250,12 +264,16 @@ model QuizResult {
   answers           Json
   result            Json
   completedAt       DateTime         @default(now())
+
   CourseQuiz        CourseQuiz       @relation(fields: [courseQuizId], references: [id], onDelete: Cascade)
   CourseEnrollment  CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  users             User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // ✅ Match relation with User
+  student           User             @relation("StudentQuizResults", fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([courseQuizId, studentId])
   @@index([studentId])
   @@index([courseQuizId])
   @@index([enrollmentId])
 }
+
