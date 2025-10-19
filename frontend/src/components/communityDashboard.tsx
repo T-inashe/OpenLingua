@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, MessageCircle, Calendar, Plus, LogOut } from "lucide-react";
 import LoaderOverlay from "./Loader";
 import { logoutRequest } from "../utils/logout";
 import ThemeToggle from "./ThemeToggle";
 import { useProAlert } from "../context/ProAlertContext";
-import config from "../config";
 
 interface Event {
   id: string;
@@ -70,17 +69,6 @@ const CommunityDashboard = () => {
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [showEventForm, setShowEventForm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [communityMembers, setCommunityMembers] = useState<User[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [newEvent, setNewEvent] = useState<CreateEventData>({
-    title: "",
-    date: "",
-    time: ""
-  });
-  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
-  const [newMessage, setNewMessage] = useState("");
   const navigate = useNavigate();
   const proAlert = useProAlert();
 
@@ -323,10 +311,21 @@ const CommunityDashboard = () => {
     }
   };
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    const success = await logoutRequest();
+    setIsLoggingOut(false);
+
+    if (success) {
+      navigate('/signIn');
+    } else {
+      proAlert.error('Unable to log out. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 p-6 space-y-12">
       {isLoggingOut && <LoaderOverlay message="Logging out..." />}
-      {isLoading && <LoaderOverlay message="Loading..." />}
 
       <div className="flex items-center justify-between">
         <button

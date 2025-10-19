@@ -44,7 +44,6 @@ export default function CreateCourse() {
   const res = await fetch(`${config.BACKEND_URL}/api/courses/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify({
       title: title,
       code: code,
@@ -56,13 +55,8 @@ export default function CreateCourse() {
   if (handleUnauthorized(res, navigate, proAlert)) {
     return;
   }
-
-  if (res.ok) {
-    proAlert.success("Course created successfully!");
-    navigate("/dashboard");
-  } else {
-    proAlert.error("Failed to create course. Please try again.");
-  }
+//  fetchCourses(); // refresh
+ 
 };
 
   return (

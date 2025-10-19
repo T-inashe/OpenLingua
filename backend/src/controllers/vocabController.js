@@ -1,4 +1,4 @@
-const prisma = require('../lib/prisma');
+const { prisma } = require('../lib/prisma');
 
 // Add vocabulary word
 const addWord = async (req, res) => {

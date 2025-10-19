@@ -3,7 +3,7 @@ import config from "../config";
 
 
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar, LogOut } from "lucide-react";
 import LoaderOverlay from "./Loader";
 import ThemeToggle from "./ThemeToggle";
@@ -115,12 +115,33 @@ const [quizResponses, setQuizResponses] = useState<Record<string, Record<string,
   selectedOptionId: number;
   isCorrect: boolean;
 }>>>({});
-const progressLoadedRef = useRef(false); // Track if we've loaded progress from storage
-const [isSavingProgress, setIsSavingProgress] = useState(false); // Track saving state
 
 const resolveLessonContent = (content: string | null): string | null => {
   if (!content) return null;
   return content.startsWith('http') ? content : `${config.BACKEND_URL}${content}`;
+};
+
+const fetchCurrentUser = async () => {
+  try {
+    const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include"
+    });
+
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
+    }
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch current user");
+    }
+
+    const data = await res.json();
+    setCurrentUser(data.user);
+  } catch (error) {
+    console.error("Error fetching current user:", error);
+  }
 };
 
 function getRelativeTime(dateString: string): string {
@@ -160,7 +181,13 @@ const [events, setEvents] = useState<Event[]>([
     setTimeout(() => setIsVisible(true), 100);
   }, []);
 const getCourses = async () => {
-  // Fetch all course data in a single optimized call
+  // Basic validation
+
+
+  // Transform your state into the format expected by your backend
+ 
+ 
+
   try {
     const res = await fetch(`${config.BACKEND_URL}/api/courses/${id}`, {
       method: "GET",
@@ -173,25 +200,24 @@ const getCourses = async () => {
     }
 
     if (!res.ok) {
-      throw new Error("Failed to fetch course");
+      throw new Error("Failed to fetch courses");
     }
 
     const data = await res.json();
-    
-    // Set all data from single response
-    setCourse(data.course);
-    setForums(data.forums || []);
-    setReviews(data.reviews || []);
-    setCurrentUser(data.user);
+   //console.log(JSON.stringify(data.course))
+
+  setCourse(data.course);  // Use the courses array
  
   } catch (error) {
-    console.error("Error loading course:", error);
+    console.error("Error creating course:", error);
     proAlert.error("Something went wrong while loading the course.");
   }
 };
+const getForum = async () => {
+  // Basic validation
 
-// Refresh just the forum posts
-const refreshForums = async () => {
+  // Transform your state into the format expected by your backend
+
   try {
     const res = await fetch(`${config.BACKEND_URL}/api/forum/${id}`, {
       method: "GET",
@@ -199,17 +225,29 @@ const refreshForums = async () => {
       credentials: 'include',
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      setForums(data.posts || []);
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
     }
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch courses");
+    }
+
+    const data = await res.json();
+
+  setForums(data.posts);  // Use the courses array
+ 
   } catch (error) {
-    console.error("Error refreshing forums:", error);
+    console.error("Error creating course:", error);
+    proAlert.error("Something went wrong while loading the forum posts.");
   }
 };
 
-// Refresh just the reviews
-const refreshReviews = async () => {
+const getReview = async () => {
+  // Basic validation
+
+  // Transform your state into the format expected by your backend
+
   try {
     const res = await fetch(`${config.BACKEND_URL}/api/courses/reviews/${id}`, {
       method: "GET",
@@ -217,12 +255,21 @@ const refreshReviews = async () => {
       credentials: 'include',
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      setReviews(data.reviews || []);
+    if (handleUnauthorized(res, navigate, proAlert)) {
+      return;
     }
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch courses");
+    }
+
+    const data = await res.json();
+
+  setReviews(data.reviews);  // Use the courses array
+ 
   } catch (error) {
-    console.error("Error refreshing reviews:", error);
+    console.error("Error creating course:", error);
+    proAlert.error("Something went wrong while loading the course reviews.");
   }
 };
 
@@ -230,8 +277,12 @@ useEffect(() => {
   const load = async () => {
     try {
       setPageLoading(true);
-      // Single optimized API call instead of 4 separate calls
-      await getCourses();
+      await Promise.all([
+        fetchCurrentUser(),
+        getCourses(),
+        getForum(),
+        getReview()
+      ]);
     } finally {
       setPageLoading(false);
     }
@@ -278,49 +329,27 @@ const calculateProgress = (state: Record<string, boolean>) => {
   return Math.round((completedCount / lessonIds.length) * 100);
 };
 
-const updateProgressOnServer = async (progressValue: number): Promise<boolean> => {
-  if (!id || !currentUser) {
-    console.warn('⚠️ Skipping server update: Course not fully loaded yet');
-    return false; // Return false to indicate no update happened
-  }
-  
+const updateProgressOnServer = async (progressValue: number) => {
+  if (!id || !currentUser) return;
   try {
-    const response = await fetch(`${config.BACKEND_URL}/api/courses/${id}/progress`, {
+    await fetch(`${config.BACKEND_URL}/api/courses/${id}/progress`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ progress: progressValue }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to update progress');
-    }
-
-    const data = await response.json();
-    console.log('✅ Server response:', data);
-    return true; // Return true to indicate success
   } catch (error) {
-    console.error('❌ Failed to update course progress:', error);
-    proAlert.error('Failed to save progress to server. Your progress is saved locally.');
-    return false; // Return false to indicate failure
+    console.error('Failed to update course progress', error);
   }
 };
 
 useEffect(() => {
-  // Only load progress when we have lesson IDs and storage key
-  if (!storageKey || lessonIds.length === 0) {
+  if (!storageKey) {
+    setCompletedLessons({});
     return;
   }
 
-  // Prevent loading multiple times
-  if (progressLoadedRef.current) {
-    return;
-  }
-
-  console.log('📚 Loading progress from localStorage:', storageKey);
   const stored = localStorage.getItem(storageKey);
-  
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as Record<string, boolean>;
@@ -330,43 +359,19 @@ useEffect(() => {
           filtered[lessonId] = true;
         }
       });
-      
-      console.log('✅ Loaded progress:', Object.keys(filtered).length, 'lessons completed');
       setCompletedLessons(filtered);
-      
       const initialProgress = calculateProgress(filtered);
-      console.log('📊 Initial progress:', initialProgress + '%');
-      
-      // Try to sync with server, but don't block on failure
-      updateProgressOnServer(initialProgress).then(success => {
-        if (success) {
-          console.log('✅ Initial sync with server successful');
-        } else {
-          console.log('ℹ️ Initial sync skipped (will retry when course fully loads)');
-        }
-      });
-      
-      progressLoadedRef.current = true; // Mark as loaded
+      updateProgressOnServer(initialProgress);
     } catch (error) {
-      console.error('❌ Failed to parse stored progress', error);
+      console.error('Failed to parse stored progress', error);
       setCompletedLessons({});
-      progressLoadedRef.current = true;
+      updateProgressOnServer(0);
     }
   } else {
-    // No stored progress, initialize with empty
-    console.log('ℹ️ No stored progress found, starting fresh');
     setCompletedLessons({});
-    
-    // Try to sync 0% with server
-    updateProgressOnServer(0).then(success => {
-      if (success) {
-        console.log('✅ Initialized progress on server');
-      }
-    });
-    
-    progressLoadedRef.current = true;
+    updateProgressOnServer(0);
   }
-}, [storageKey, lessonIds.length]); // Only re-run when storage key changes or lesson count changes
+}, [storageKey, lessonIds]);
 
 const renderLessonContent = (lesson: CourseLesson) => {
   const normalizedType = (lesson.type || "text").toLowerCase();
@@ -618,7 +623,7 @@ const renderLessonContent = (lesson: CourseLesson) => {
 
     if (response.ok) {
       proAlert.success("Forum post created successfully!");
-      refreshForums();
+      getForum()
     } else {
       const errorData = await response.json();
       console.error("Failed to create forum:", errorData);
@@ -661,7 +666,7 @@ const renderLessonContent = (lesson: CourseLesson) => {
 
     if (response.ok) {
       proAlert.success("Review submitted successfully!");
-      refreshReviews();
+      getReview()
     } else {
       const errorData = await response.json();
       console.error("Failed to create forum:", errorData);
@@ -693,55 +698,11 @@ attendingCount: e.attendingCount + (newAttending ? 1 : -1)
 return e;
 }));
 };
-const toggleLessonDone = async (lessonId: string) => {
-  // Prevent multiple clicks while saving
-  if (isSavingProgress) {
-    console.log('⏳ Already saving progress, please wait...');
-    return;
-  }
-
-  setIsSavingProgress(true);
-  
-  try {
-    // Calculate new state immediately
-    const newState = {
-      ...completedLessons,
-      [lessonId]: !completedLessons[lessonId]
-    };
-    
-    // Update state immediately
-    setCompletedLessons(newState);
-    
-    // Save to localStorage immediately (synchronous)
-    if (storageKey) {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(newState));
-        console.log('✅ Saved to localStorage:', storageKey);
-      } catch (error) {
-        console.error('❌ Failed to save to localStorage:', error);
-        proAlert.error('Failed to save locally');
-      }
-    }
-    
-    // Calculate and update progress on server
-    const newProgress = calculateProgress(newState);
-    console.log('📊 Updating progress to:', newProgress + '%');
-    
-    const serverSaved = await updateProgressOnServer(newProgress);
-    
-    if (serverSaved) {
-      console.log('✅ Progress saved to server');
-      proAlert.success('Progress saved!');
-    } else {
-      console.log('ℹ️ Progress saved locally only (will sync when course loads)');
-      proAlert.info('Progress saved locally');
-    }
-  } catch (error) {
-    console.error('❌ Failed to update progress:', error);
-    proAlert.error('Failed to save progress');
-  } finally {
-    setIsSavingProgress(false);
-  }
+const toggleLessonDone = (lessonId: string) => {
+setCompletedLessons(prev => ({
+  ...prev,
+  [lessonId]: !prev[lessonId]
+}));
 };
 
   const handleLogout = async () => {
@@ -795,29 +756,6 @@ const toggleLessonDone = async (lessonId: string) => {
 <h1 className={`text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-8 transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
 Welcome To {course?.title}
 </h1>
-
-{/* Course Progress Indicator */}
-<div className={`bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 mb-8 transition-all duration-1000 delay-100 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
-  <div className="flex items-center justify-between mb-3">
-    <h2 className="text-white font-semibold text-lg">Your Progress</h2>
-    <span className="text-cyan-300 font-bold text-xl">{calculateProgress(completedLessons)}%</span>
-  </div>
-  <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
-    <div
-      className="bg-gradient-to-r from-cyan-500 to-purple-500 h-full rounded-full transition-all duration-500 ease-out"
-      style={{ width: `${calculateProgress(completedLessons)}%` }}
-    />
-  </div>
-  <div className="flex items-center justify-between mt-2 text-sm text-gray-400">
-    <span>{lessonIds.filter(id => completedLessons[id]).length} of {lessonIds.length} lessons completed</span>
-    {calculateProgress(completedLessons) === 100 && (
-      <span className="text-green-400 font-semibold flex items-center gap-1">
-        <Star size={16} className="fill-green-400" />
-        Course Complete!
-      </span>
-    )}
-  </div>
-</div>
 
 
 {/* Translator */}
@@ -895,19 +833,11 @@ Welcome To {course?.title}
                   </div>
                   <button
                     onClick={() => toggleLessonDone(lesson.id)}
-                    disabled={isSavingProgress}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 flex items-center gap-1 ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 ${
                       isCompleted ? "bg-green-600/80" : "bg-cyan-600/80"
-                    } ${isSavingProgress ? "opacity-50 cursor-not-allowed" : ""}`}
+                    }`}
                   >
-                    {isSavingProgress ? (
-                      <>
-                        <Loader2 size={12} className="animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>{isCompleted ? "Completed" : "Mark as Done"}</>
-                    )}
+                    {isCompleted ? "Completed" : "Mark as Done"}
                   </button>
                 </div>
 

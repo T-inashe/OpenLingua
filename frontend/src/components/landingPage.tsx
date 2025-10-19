@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import '../css/LandingPage.css';
 
 const menus = ['Home', 'About', 'Testimonials', 'Contact']
 
@@ -8,7 +7,6 @@ const LandingPage = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [activeTestimonial, setActivetestimonial] = useState(0)
     const navigate = useNavigate();
-    
     useEffect(() => {
         // Force dark mode on landing page
         document.body.classList.remove('theme-light');
@@ -71,7 +69,7 @@ const LandingPage = () => {
     ]
 
   return (
-    <div className="landing-page dark !bg-gradient-to-br !from-slate-900 !via-purple-900 !to-slate-900 min-h-screen overflow-hidden" style={{ backgroundColor: '#0f172a' }}>
+    <div className="landing-page min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-hidden">
 
         <header className={`relative z-50 transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
             <div className="container mx-auto px-6 py-6">
