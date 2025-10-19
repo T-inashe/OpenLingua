@@ -2,11 +2,11 @@ import { TextEncoder, TextDecoder } from "util";
 (global as any).TextEncoder = TextEncoder;
 (global as any).TextDecoder = TextDecoder;
 
-import React from "react";
+//import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
-import ProfileForm from "../../src/components/auth/profileForm";
+import ProfileForm from "../../src/components/auth/ProfileForm";
 
 describe("ProfileForm", () => {
   const setup = (overrides?: Partial<React.ComponentProps<typeof ProfileForm>>) => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import config from "../../config";
 import { Link } from "react-router-dom";
 import '../../css/LandingPage.css';
-
+import { navigateTo } from "../../utils/navigate";
 // Type definitions
 interface FormData {
   email: string;
@@ -34,7 +34,8 @@ const SignIn: React.FC = () => {
 
   const handleGoogleLogin = (): void => {
     try {
-      window.location.href = `${config.BACKEND_URL}/api/auth/google`;
+     // window.location.href = `${config.BACKEND_URL}/api/auth/google`;
+      navigateTo(`${config.BACKEND_URL}/api/auth/google`);
     } catch (err) {
       console.error('Google login error:', err);
     }
@@ -42,7 +43,8 @@ const SignIn: React.FC = () => {
 
   const handleMicrosoftLogin = (): void => {
     try {
-      window.location.href = `${config.BACKEND_URL}/api/auth/microsoft`;
+      //window.location.href = `${config.BACKEND_URL}/api/auth/microsoft`;
+       navigateTo(`${config.BACKEND_URL}/api/auth/microsoft`);
     } catch (err) {
       console.error('Microsoft login error:', err);
     }

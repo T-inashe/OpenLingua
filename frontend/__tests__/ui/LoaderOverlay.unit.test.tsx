@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import LoaderOverlay from '../../src/components/ui/Loader';
+import LoaderOverlay from '../../src/components/ui/LoaderOverlay';
 
 // Mock Lucide React icons
 jest.mock('lucide-react', () => ({

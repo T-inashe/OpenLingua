@@ -1,7 +1,7 @@
-import type { NavigateFunction } from "react-router-dom";
 import type { ProAlertVariant } from "../context/ProAlertContext";
 
-type ProAlert = {
+export type NavigateFunction = (to: string, options?: { replace?: boolean }) => void;
+export type ProAlert = {
   show: (message: string, variant?: ProAlertVariant) => void;
   info: (message: string) => void;
 };

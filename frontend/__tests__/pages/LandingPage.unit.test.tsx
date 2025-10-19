@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
-import LandingPage from '../../src/components/pages/landingPage';
+import LandingPage from '../../src/components/pages/LandingPage';
 
 // Mock React Router
 const mockNavigate = jest.fn();
