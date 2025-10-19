@@ -9,7 +9,7 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/logout', authenticate, authController.logout);
 router.get('/me', authenticate, authController.me);
-router.patch('/update', authenticate, authController.updateProfile);
+router.post('/update-profile', authenticate, authController.updateProfile);
 
 // Google OAuth routes - NO TRAILING SLASHES
 router.get(

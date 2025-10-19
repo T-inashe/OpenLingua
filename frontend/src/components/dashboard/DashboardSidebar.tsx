@@ -1,5 +1,6 @@
 import { Plus, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import type { SidebarItem, User } from "../../types/dashboard.types";
 import { logoutRequest } from "../../utils/logout";
 import { useProAlert } from "../../context/ProAlertContext";
@@ -23,6 +24,7 @@ const DashboardSidebar = ({
 }: DashboardSidebarProps) => {
   const navigate = useNavigate();
   const proAlert = useProAlert();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleSidebarItemClick = (itemId: string) => {
     if (itemId === "community") {
@@ -33,6 +35,7 @@ const DashboardSidebar = ({
   };
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     const success = await logoutRequest();
 
     if (success) {
@@ -40,6 +43,7 @@ const DashboardSidebar = ({
       navigate("/signIn");
     } else {
       proAlert.error("Unable to log out. Please try again.");
+      setIsLoggingOut(false);
     }
   };
 
@@ -85,16 +89,49 @@ const DashboardSidebar = ({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={handleLogout}
-        className={`bg-gradient-to-r m-16 from-cyan-500 to-purple-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 transform flex items-center justify-center gap-2 ${
-          isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-        }`}
-      >
-        <LogOut size={18} />
-        Log Out
-      </button>
+      {/* Logout Button */}
+      <div className="px-6 pb-6 mt-8">
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className={`w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-500/10 to-red-600/10 hover:from-red-500/20 hover:to-red-600/20 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-400/50 px-4 py-3 rounded-lg transition-all duration-300 hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
+            isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+          style={{ transitionDelay: "400ms" }}
+        >
+          {isLoggingOut ? (
+            <>
+              <svg
+                className="animate-spin h-5 w-5 text-red-400"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <span className="font-medium">Logging out...</span>
+            </>
+          ) : (
+            <>
+              <LogOut size={18} />
+              <span className="font-medium">Log Out</span>
+            </>
+          )}
+        </button>
+      </div>
     </aside>
   );
 };

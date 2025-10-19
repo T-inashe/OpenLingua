@@ -4,8 +4,8 @@ import LoaderOverlay from "./ui/LoaderOverlay";
 import DashboardHeader from "./dashboard/DashboardHeader";
 import DashboardSidebar from "./dashboard/DashboardSidebar";
 import DashboardStats from "./dashboard/DashboardStats";
-import CourseFilters from "./dashboard/CourseFilters";
 import DashboardSettings from "./dashboard/DashboardSettings";
+import CourseFilters from "./dashboard/CourseFilters";
 import CourseCard from "./dashboard/CourseCard";
 import { useDashboardData } from "../hooks/useDashboardData";
 import type { SidebarItem } from "../types/dashboard.types";
@@ -32,6 +32,11 @@ const Dashboard = () => {
   useEffect(() => {
     setIsVisible(true);
   }, []);
+
+  const handleUserUpdate = () => {
+    // Trigger a page reload to refresh user data
+    window.location.reload();
+  };
 
   const sidebarItems: SidebarItem[] = [
     { id: "overview", label: "Overview", icon: TrendingUp },
@@ -174,31 +179,37 @@ const Dashboard = () => {
         />
 
         <div className="flex-1 p-6">
-          <DashboardStats stats={stats} isVisible={isVisible} />
+          {activeTab === "settings" ? (
+            <div
+              className={`transition-all duration-1000 delay-400 ${
+                isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+              }`}
+            >
+              <DashboardSettings user={user} onUserUpdate={handleUserUpdate} />
+            </div>
+          ) : (
+            <>
+              <DashboardStats stats={stats} isVisible={isVisible} />
 
-          <CourseFilters
-            searchQuery={searchQuery}
-            difficultyFilter={difficultyFilter}
-            sortBy={sortBy}
-            onSearchChange={setSearchQuery}
-            onDifficultyChange={setDifficultyFilter}
-            onSortChange={setSortBy}
-            isVisible={isVisible}
-          />
+              <CourseFilters
+                searchQuery={searchQuery}
+                difficultyFilter={difficultyFilter}
+                sortBy={sortBy}
+                onSearchChange={setSearchQuery}
+                onDifficultyChange={setDifficultyFilter}
+                onSortChange={setSortBy}
+                isVisible={isVisible}
+              />
 
-          <div
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 transition-all duration-1000 delay-600 ${
-              isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-            }`}
-          >
-            {activeTab === 'settings' ? (
-              <div className="col-span-full">
-                <DashboardSettings />
+              <div
+                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 transition-all duration-1000 delay-600 ${
+                  isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+                }`}
+              >
+                {renderCourseGrid()}
               </div>
-            ) : (
-              renderCourseGrid()
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

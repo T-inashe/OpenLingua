@@ -113,6 +113,7 @@ const CourseCreation = () => {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const pendingNavigation = useRef<(() => void | Promise<void>) | null>(null);
 
   // Quiz management state - COMMENTED OUT (Quiz now part of lesson types)
@@ -351,6 +352,96 @@ const CourseCreation = () => {
     // { id: 5, title: "Quizzes", icon: BookOpen } // Commented out - Quiz now part of lesson types
   ];
 
+  // Validation function for each step
+  const validateStep = (stepId: number): boolean => {
+    switch (stepId) {
+      case 1: // Course Info
+        if (!courseData.title.trim()) {
+          proAlert.error("Please enter a course title");
+          return false;
+        }
+        if (!courseData.description.trim()) {
+          proAlert.error("Please enter a course description");
+          return false;
+        }
+        if (!courseData.language.trim()) {
+          proAlert.error("Please select a language");
+          return false;
+        }
+        if (!courseData.difficulty) {
+          proAlert.error("Please select a difficulty level");
+          return false;
+        }
+        if (!courseData.category) {
+          proAlert.error("Please select a category");
+          return false;
+        }
+        if (!courseData.estimatedHours.trim()) {
+          proAlert.error("Please enter estimated hours");
+          return false;
+        }
+        return true;
+
+      case 2: // Structure
+        if (units.length === 0) {
+          proAlert.error("Please add at least one unit to your course");
+          return false;
+        }
+        // Check if all units have titles
+        const unitsWithoutTitles = units.filter(u => !u.title.trim());
+        if (unitsWithoutTitles.length > 0) {
+          proAlert.error("All units must have a title");
+          return false;
+        }
+        // Check if at least one unit has lessons
+        const unitsWithLessons = units.filter(u => u.lessons.length > 0);
+        if (unitsWithLessons.length === 0) {
+          proAlert.error("Please add at least one lesson to your course");
+          return false;
+        }
+        return true;
+
+      case 3: // Content
+        // Check if all lessons have titles and content
+        for (const unit of units) {
+          for (const lesson of unit.lessons) {
+            if (!lesson.title.trim()) {
+              proAlert.error(`Please add a title to all lessons in "${unit.title}"`);
+              return false;
+            }
+            // Check content based on lesson type
+            if (lesson.type === "text" && !lesson.content?.trim()) {
+              proAlert.error(`Please add content to the text lesson "${lesson.title}"`);
+              return false;
+            }
+            if ((lesson.type === "audio" || lesson.type === "video") && !lesson.file && !lesson.content) {
+              proAlert.error(`Please upload a file for the ${lesson.type} lesson "${lesson.title}"`);
+              return false;
+            }
+            if (lesson.type === "quiz") {
+              try {
+                const quizData = lesson.content ? JSON.parse(lesson.content) : null;
+                if (!quizData || !quizData.questions || quizData.questions.length === 0) {
+                  proAlert.error(`Please add at least one question to the quiz "${lesson.title}"`);
+                  return false;
+                }
+              } catch {
+                proAlert.error(`Invalid quiz data in "${lesson.title}"`);
+                return false;
+              }
+            }
+          }
+        }
+        return true;
+
+      case 4: // Settings - no required fields
+        return true;
+
+      default:
+        return true;
+    }
+  };
+
 
 
   const addUnit = () => {
@@ -501,6 +592,8 @@ const CourseCreation = () => {
     return;
   }
 
+  setIsPublishing(true);
+
   // Check if course title already exists (case-insensitive)
   try {
     const checkResponse = await fetch(`${config.BACKEND_URL}/api/courses/`, {
@@ -524,6 +617,7 @@ const CourseCreation = () => {
         proAlert.error(
           `A course titled "${duplicateCourse.title}" already exists. Please choose a different title.`
         );
+        setIsPublishing(false);
         return;
       }
     }
@@ -586,11 +680,13 @@ const CourseCreation = () => {
     });
 
     if (handleUnauthorized(response, navigate, proAlert)) {
+      setIsPublishing(false);
       return;
     }
 
     if (response.ok) {
       proAlert.success(isEditMode ? "Course updated successfully!" : "Course created successfully!");
+      setIsPublishing(false);
      navigate(`/dashboard`)
     } else {
       const errorData = await response.json();
@@ -607,10 +703,12 @@ const CourseCreation = () => {
       } else {
         proAlert.error(errorData.error || (isEditMode ? "Failed to update course." : "Failed to create course."));
       }
+      setIsPublishing(false);
     }
   } catch (error) {
     console.error("Error saving course:", error);
     proAlert.error("Something went wrong while saving the course.");
+    setIsPublishing(false);
   }
 };
 
@@ -1968,7 +2066,17 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
               return (
                 <div key={step.id} className="flex items-center">
                   <button
-                    onClick={() => setActiveStep(step.id)}
+                    onClick={() => {
+                      // Only validate if moving forward
+                      if (step.id > activeStep) {
+                        if (validateStep(activeStep)) {
+                          setActiveStep(step.id);
+                        }
+                      } else {
+                        // Allow backward navigation without validation
+                        setActiveStep(step.id);
+                      }
+                    }}
                     className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-300 ${
                       isActive
                         ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg'
@@ -2008,13 +2116,28 @@ className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-wh
             {activeStep === 4 ? (
               <button
                 onClick={createCourse}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
+                disabled={isPublishing}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
               >
-                {isEditMode ? 'Update Course' : 'Publish Course'}
+                {isPublishing ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{isEditMode ? 'Updating...' : 'Publishing...'}</span>
+                  </>
+                ) : (
+                  <span>{isEditMode ? 'Update Course' : 'Publish Course'}</span>
+                )}
               </button>
             ) : (
               <button
-                onClick={() => setActiveStep(Math.min(4, activeStep + 1))}
+                onClick={() => {
+                  if (validateStep(activeStep)) {
+                    setActiveStep(Math.min(4, activeStep + 1));
+                  }
+                }}
                 className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
               >
                 Next Step

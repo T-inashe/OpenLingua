@@ -146,21 +146,36 @@ exports.updateProfile = async (req, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const userId = req.user.id;
     const { name, avatar } = req.body;
+    const userId = req.user.id;
 
-    const updated = await prisma.user.update({
+    // Validate input
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    // Update user in database
+    const prisma = require('../lib/prisma');
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        name: typeof name === 'string' ? name : undefined,
-        avatar: typeof avatar === 'string' ? avatar : undefined,
-      },
-      select: { id: true, name: true, avatar: true, email: true }
+        name: name.trim(),
+        avatar: avatar || null,
+        updatedAt: new Date()
+      }
     });
 
-    res.json({ user: updated });
+    // Return updated user
+    res.json({
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      avatar: updatedUser.avatar,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt
+    });
   } catch (error) {
-    console.error('Error updating profile:', error);
+    console.error('Update profile error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
 };
