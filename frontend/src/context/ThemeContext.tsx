@@ -25,8 +25,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
-    document.body.classList.remove('theme-light', 'theme-dark');
-    document.body.classList.add(`theme-${theme}`);
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
   }, [theme]);
 
   const value = useMemo<ThemeContextValue>(

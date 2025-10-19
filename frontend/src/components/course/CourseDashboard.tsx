@@ -1,15 +1,17 @@
 
-import config from "../config";
+import config from "../../config";
 
 
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
-import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar, LogOut } from "lucide-react";
-import LoaderOverlay from "./Loader";
-import ThemeToggle from "./ThemeToggle";
-import { useProAlert } from "../context/ProAlertContext";
-import { handleUnauthorized } from "../utils/handleUnauthorized";
-import { logoutRequest } from "../utils/logout";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar, LogOut, Clock, Target, ArrowLeft } from "lucide-react";
+import LoaderOverlay from "../ui/LoaderOverlay";
+import ThemeToggle from "../layout/ThemeToggle";
+import { useProAlert } from "../../context/ProAlertContext";
+import { handleUnauthorized } from "../../utils/handleUnauthorized";
+import { logoutRequest } from "../../utils/logout";
+import { getCourseQuizzes } from "../../services/quizApi";
+import type { Quiz } from "../../services/quizApi";
 
 type Review = {
 user: User;
@@ -115,33 +117,16 @@ const [quizResponses, setQuizResponses] = useState<Record<string, Record<string,
   selectedOptionId: number;
   isCorrect: boolean;
 }>>>({});
+const progressLoadedRef = useRef(false); // Track if we've loaded progress from storage
+const [isSavingProgress, setIsSavingProgress] = useState(false); // Track saving state
+
+  // Quiz state
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(false);
 
 const resolveLessonContent = (content: string | null): string | null => {
   if (!content) return null;
   return content.startsWith('http') ? content : `${config.BACKEND_URL}${content}`;
-};
-
-const fetchCurrentUser = async () => {
-  try {
-    const res = await fetch(`${config.BACKEND_URL}/api/auth/me/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include"
-    });
-
-    if (handleUnauthorized(res, navigate, proAlert)) {
-      return;
-    }
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch current user");
-    }
-
-    const data = await res.json();
-    setCurrentUser(data.user);
-  } catch (error) {
-    console.error("Error fetching current user:", error);
-  }
 };
 
 function getRelativeTime(dateString: string): string {
@@ -181,13 +166,7 @@ const [events, setEvents] = useState<Event[]>([
     setTimeout(() => setIsVisible(true), 100);
   }, []);
 const getCourses = async () => {
-  // Basic validation
-
-
-  // Transform your state into the format expected by your backend
- 
- 
-
+  // Fetch all course data in a single optimized call
   try {
     const res = await fetch(`${config.BACKEND_URL}/api/courses/${id}`, {
       method: "GET",
@@ -200,24 +179,25 @@ const getCourses = async () => {
     }
 
     if (!res.ok) {
-      throw new Error("Failed to fetch courses");
+      throw new Error("Failed to fetch course");
     }
 
     const data = await res.json();
-   //console.log(JSON.stringify(data.course))
-
-  setCourse(data.course);  // Use the courses array
+    
+    // Set all data from single response
+    setCourse(data.course);
+    setForums(data.forums || []);
+    setReviews(data.reviews || []);
+    setCurrentUser(data.user);
  
   } catch (error) {
-    console.error("Error creating course:", error);
+    console.error("Error loading course:", error);
     proAlert.error("Something went wrong while loading the course.");
   }
 };
-const getForum = async () => {
-  // Basic validation
 
-  // Transform your state into the format expected by your backend
-
+// Refresh just the forum posts
+const refreshForums = async () => {
   try {
     const res = await fetch(`${config.BACKEND_URL}/api/forum/${id}`, {
       method: "GET",
@@ -225,29 +205,17 @@ const getForum = async () => {
       credentials: 'include',
     });
 
-    if (handleUnauthorized(res, navigate, proAlert)) {
-      return;
+    if (res.ok) {
+      const data = await res.json();
+      setForums(data.posts || []);
     }
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch courses");
-    }
-
-    const data = await res.json();
-
-  setForums(data.posts);  // Use the courses array
- 
   } catch (error) {
-    console.error("Error creating course:", error);
-    proAlert.error("Something went wrong while loading the forum posts.");
+    console.error("Error refreshing forums:", error);
   }
 };
 
-const getReview = async () => {
-  // Basic validation
-
-  // Transform your state into the format expected by your backend
-
+// Refresh just the reviews
+const refreshReviews = async () => {
   try {
     const res = await fetch(`${config.BACKEND_URL}/api/courses/reviews/${id}`, {
       method: "GET",
@@ -255,21 +223,30 @@ const getReview = async () => {
       credentials: 'include',
     });
 
-    if (handleUnauthorized(res, navigate, proAlert)) {
-      return;
+    if (res.ok) {
+      const data = await res.json();
+      setReviews(data.reviews || []);
     }
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch courses");
-    }
-
-    const data = await res.json();
-
-  setReviews(data.reviews);  // Use the courses array
- 
   } catch (error) {
-    console.error("Error creating course:", error);
-    proAlert.error("Something went wrong while loading the course reviews.");
+    console.error("Error refreshing reviews:", error);
+  }
+};
+
+// Load quizzes
+const loadQuizzes = async () => {
+  if (!id) return;
+  
+  try {
+    setLoadingQuizzes(true);
+    const data = await getCourseQuizzes(id);
+    // Handle both array and object with quizzes property
+    const quizArray = Array.isArray(data) ? data : ((data as any).quizzes || []);
+    setQuizzes(quizArray.filter((q: Quiz) => q.isActive)); // Only show active quizzes to students
+  } catch (error: any) {
+    console.error("Error loading quizzes:", error);
+    setQuizzes([]); // Set empty array on error
+  } finally {
+    setLoadingQuizzes(false);
   }
 };
 
@@ -277,12 +254,9 @@ useEffect(() => {
   const load = async () => {
     try {
       setPageLoading(true);
-      await Promise.all([
-        fetchCurrentUser(),
-        getCourses(),
-        getForum(),
-        getReview()
-      ]);
+      // Single optimized API call instead of 4 separate calls
+      await getCourses();
+      await loadQuizzes();
     } finally {
       setPageLoading(false);
     }
@@ -329,27 +303,49 @@ const calculateProgress = (state: Record<string, boolean>) => {
   return Math.round((completedCount / lessonIds.length) * 100);
 };
 
-const updateProgressOnServer = async (progressValue: number) => {
-  if (!id || !currentUser) return;
+const updateProgressOnServer = async (progressValue: number): Promise<boolean> => {
+  if (!id || !currentUser) {
+    console.warn('⚠️ Skipping server update: Course not fully loaded yet');
+    return false; // Return false to indicate no update happened
+  }
+  
   try {
-    await fetch(`${config.BACKEND_URL}/api/courses/${id}/progress`, {
+    const response = await fetch(`${config.BACKEND_URL}/api/courses/${id}/progress`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ progress: progressValue }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to update progress');
+    }
+
+    const data = await response.json();
+    console.log('✅ Server response:', data);
+    return true; // Return true to indicate success
   } catch (error) {
-    console.error('Failed to update course progress', error);
+    console.error('❌ Failed to update course progress:', error);
+    proAlert.error('Failed to save progress to server. Your progress is saved locally.');
+    return false; // Return false to indicate failure
   }
 };
 
 useEffect(() => {
-  if (!storageKey) {
-    setCompletedLessons({});
+  // Only load progress when we have lesson IDs and storage key
+  if (!storageKey || lessonIds.length === 0) {
     return;
   }
 
+  // Prevent loading multiple times
+  if (progressLoadedRef.current) {
+    return;
+  }
+
+  console.log('📚 Loading progress from localStorage:', storageKey);
   const stored = localStorage.getItem(storageKey);
+  
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as Record<string, boolean>;
@@ -359,19 +355,43 @@ useEffect(() => {
           filtered[lessonId] = true;
         }
       });
+      
+      console.log('✅ Loaded progress:', Object.keys(filtered).length, 'lessons completed');
       setCompletedLessons(filtered);
+      
       const initialProgress = calculateProgress(filtered);
-      updateProgressOnServer(initialProgress);
+      console.log('📊 Initial progress:', initialProgress + '%');
+      
+      // Try to sync with server, but don't block on failure
+      updateProgressOnServer(initialProgress).then(success => {
+        if (success) {
+          console.log('✅ Initial sync with server successful');
+        } else {
+          console.log('ℹ️ Initial sync skipped (will retry when course fully loads)');
+        }
+      });
+      
+      progressLoadedRef.current = true; // Mark as loaded
     } catch (error) {
-      console.error('Failed to parse stored progress', error);
+      console.error('❌ Failed to parse stored progress', error);
       setCompletedLessons({});
-      updateProgressOnServer(0);
+      progressLoadedRef.current = true;
     }
   } else {
+    // No stored progress, initialize with empty
+    console.log('ℹ️ No stored progress found, starting fresh');
     setCompletedLessons({});
-    updateProgressOnServer(0);
+    
+    // Try to sync 0% with server
+    updateProgressOnServer(0).then(success => {
+      if (success) {
+        console.log('✅ Initialized progress on server');
+      }
+    });
+    
+    progressLoadedRef.current = true;
   }
-}, [storageKey, lessonIds]);
+}, [storageKey, lessonIds.length]); // Only re-run when storage key changes or lesson count changes
 
 const renderLessonContent = (lesson: CourseLesson) => {
   const normalizedType = (lesson.type || "text").toLowerCase();
@@ -623,7 +643,7 @@ const renderLessonContent = (lesson: CourseLesson) => {
 
     if (response.ok) {
       proAlert.success("Forum post created successfully!");
-      getForum()
+      refreshForums();
     } else {
       const errorData = await response.json();
       console.error("Failed to create forum:", errorData);
@@ -666,7 +686,7 @@ const renderLessonContent = (lesson: CourseLesson) => {
 
     if (response.ok) {
       proAlert.success("Review submitted successfully!");
-      getReview()
+      refreshReviews();
     } else {
       const errorData = await response.json();
       console.error("Failed to create forum:", errorData);
@@ -698,11 +718,55 @@ attendingCount: e.attendingCount + (newAttending ? 1 : -1)
 return e;
 }));
 };
-const toggleLessonDone = (lessonId: string) => {
-setCompletedLessons(prev => ({
-  ...prev,
-  [lessonId]: !prev[lessonId]
-}));
+const toggleLessonDone = async (lessonId: string) => {
+  // Prevent multiple clicks while saving
+  if (isSavingProgress) {
+    console.log('⏳ Already saving progress, please wait...');
+    return;
+  }
+
+  setIsSavingProgress(true);
+  
+  try {
+    // Calculate new state immediately
+    const newState = {
+      ...completedLessons,
+      [lessonId]: !completedLessons[lessonId]
+    };
+    
+    // Update state immediately
+    setCompletedLessons(newState);
+    
+    // Save to localStorage immediately (synchronous)
+    if (storageKey) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(newState));
+        console.log('✅ Saved to localStorage:', storageKey);
+      } catch (error) {
+        console.error('❌ Failed to save to localStorage:', error);
+        proAlert.error('Failed to save locally');
+      }
+    }
+    
+    // Calculate and update progress on server
+    const newProgress = calculateProgress(newState);
+    console.log('📊 Updating progress to:', newProgress + '%');
+    
+    const serverSaved = await updateProgressOnServer(newProgress);
+    
+    if (serverSaved) {
+      console.log('✅ Progress saved to server');
+      proAlert.success('Progress saved!');
+    } else {
+      console.log('ℹ️ Progress saved locally only (will sync when course loads)');
+      proAlert.info('Progress saved locally');
+    }
+  } catch (error) {
+    console.error('❌ Failed to update progress:', error);
+    proAlert.error('Failed to save progress');
+  } finally {
+    setIsSavingProgress(false);
+  }
 };
 
   const handleLogout = async () => {
@@ -723,13 +787,23 @@ setCompletedLessons(prev => ({
       {/* Header */}
       <header className={`sticky top-0 z-50 bg-slate-900/60 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`}>
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
-            type="button"
-            onClick={() => navigate('/dashboard')}
-          >
-            OpenLingua
-          </button>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/dashboard')}
+              type="button"
+              className="flex items-center justify-center w-10 h-10 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 border border-gray-200 dark:border-white/15 transition-all"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <button
+              className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+              type="button"
+              onClick={() => navigate('/dashboard')}
+            >
+              OpenLingua
+            </button>
+          </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-400 hover:text-white transition-colors duration-200">
@@ -756,6 +830,29 @@ setCompletedLessons(prev => ({
 <h1 className={`text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 mb-8 transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
 Welcome To {course?.title}
 </h1>
+
+{/* Course Progress Indicator */}
+<div className={`bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 mb-8 transition-all duration-1000 delay-100 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
+  <div className="flex items-center justify-between mb-3">
+    <h2 className="text-white font-semibold text-lg">Your Progress</h2>
+    <span className="text-cyan-300 font-bold text-xl">{calculateProgress(completedLessons)}%</span>
+  </div>
+  <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
+    <div
+      className="bg-gradient-to-r from-cyan-500 to-purple-500 h-full rounded-full transition-all duration-500 ease-out"
+      style={{ width: `${calculateProgress(completedLessons)}%` }}
+    />
+  </div>
+  <div className="flex items-center justify-between mt-2 text-sm text-gray-400">
+    <span>{lessonIds.filter(id => completedLessons[id]).length} of {lessonIds.length} lessons completed</span>
+    {calculateProgress(completedLessons) === 100 && (
+      <span className="text-green-400 font-semibold flex items-center gap-1">
+        <Star size={16} className="fill-green-400" />
+        Course Complete!
+      </span>
+    )}
+  </div>
+</div>
 
 
 {/* Translator */}
@@ -833,11 +930,19 @@ Welcome To {course?.title}
                   </div>
                   <button
                     onClick={() => toggleLessonDone(lesson.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 ${
+                    disabled={isSavingProgress}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 flex items-center gap-1 ${
                       isCompleted ? "bg-green-600/80" : "bg-cyan-600/80"
-                    }`}
+                    } ${isSavingProgress ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
-                    {isCompleted ? "Completed" : "Mark as Done"}
+                    {isSavingProgress ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>{isCompleted ? "Completed" : "Mark as Done"}</>
+                    )}
                   </button>
                 </div>
 
@@ -891,6 +996,65 @@ Welcome To {course?.title}
   </div>
 ))}
 </div>
+</section>
+
+
+{/* Quizzes Section */}
+<section className={`bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 transition-all duration-1000 delay-700 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
+  <h2 className="text-white font-semibold text-xl mb-4 flex items-center gap-2">
+    <BookOpen size={24} className="text-cyan-400" />
+    Course Quizzes
+  </h2>
+  
+  {loadingQuizzes ? (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 className="animate-spin text-cyan-400" size={32} />
+    </div>
+  ) : quizzes.length === 0 ? (
+    <div className="text-center py-8 text-gray-400">
+      <BookOpen size={48} className="mx-auto mb-3 opacity-50" />
+      <p>No quizzes available yet</p>
+    </div>
+  ) : (
+    <div className="grid gap-4">
+      {quizzes.map((quiz) => (
+        <div
+          key={quiz.id}
+          className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-cyan-500/30 transition-all duration-200"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <h3 className="text-white font-semibold text-lg mb-1">{quiz.title}</h3>
+              <p className="text-gray-400 text-sm">{quiz.description}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
+            <span className="flex items-center gap-1">
+              <BookOpen size={14} />
+              {quiz.questionCount || 0} questions
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock size={14} />
+              {quiz.timeLimit ? `${quiz.timeLimit} min` : 'No limit'}
+            </span>
+            <span className="flex items-center gap-1">
+              <Target size={14} />
+              {quiz.passingScore}% to pass
+            </span>
+          </div>
+          
+          <button
+            onClick={() => navigate(`/courses/${id}/quiz/${quiz.id}/take`)}
+            className="w-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105 flex items-center justify-center gap-2"
+          >
+            <BookOpen size={18} />
+            Take Quiz
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
 </section>
 
 

@@ -1,25 +1,31 @@
-const { Router } = require('express');
-const { register, login, logout, me } = require('../controllers/authController');
-const { googleAuth, googleCallback } = require('../controllers/googleAuthController'); 
+const express = require('express');
+const router = express.Router();
+const passport = require('passport');
+const authController = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 
-const router = Router();
+// Local authentication routes - NO TRAILING SLASHES
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+router.post('/logout', authenticate, authController.logout);
+router.get('/me', authenticate, authController.me);
 
-// Manual auth routes
-router.post('/register', register);
-router.post('/login', login);
+// Google OAuth routes - NO TRAILING SLASHES
+router.get(
+  '/google',
+  passport.authenticate('google', { 
+    scope: ['profile', 'email']
+  })
+);
 
-// Google OAuth routes - with debug logging
-router.get('/google', (req, res, next) => {
-  googleAuth(req, res, next);
-});
-
-router.get('/google/callback', (req, res, next) => {
-  googleCallback(req, res, next);
-});
-
-// Protected routes
-router.post('/logout', authenticate, logout);
-router.get('/me', authenticate, me);
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { 
+    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/signin?error=google_auth_failed`
+  }),
+  (req, res) => {
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`);
+  }
+);
 
 module.exports = router;
