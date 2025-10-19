@@ -11,7 +11,7 @@
 - **Nhlamulo Delight Mabunda** – Backend & Frontend | BSc Computer Science (Wits)  
 - **Bongumusa Makhubu** – Backend & Testing | BSc Computer Science (Wits)  
 - **Tinashe Nganadange** – GitHub Facilitator & Fullstack | BSc Computer Science (Wits)  
-- **Hluma Nziweni** – UI Designer, Frontend & Scrum Master | BSc Computer Science (Wits)  
+- **Hluma Nziweni** – UI Designer, Frontend & Scrum Master | BSc Computer Science (Wits).  
 
 
 ## Technology Stack
