@@ -1,4 +1,5 @@
 // Jest setup for React Testing Library matchers
+import { jest } from '@jest/globals';
 import '@testing-library/jest-dom';
 
 // Polyfill TextEncoder/TextDecoder for react-router-dom in JSDOM
