@@ -1,6 +1,6 @@
 # OpenLingua
 
-**OpenLingua** is an open-source, community-driven language learning platform. Users can create, upload, and share language courses. It supports vocabulary drills, grammar lessons, pronunciation guides, and interactive activities, allowing learners to study any language — even rare or constructed ones — in a collaborative environment.
+**OpenLingua** is an open-source, community-driven language learning platform. Users can create, upload, and share language courses. It supports vocabulary drills, grammar lessons, pronunciation guides, and interactive activities, allowing learners to study any language — even rare or constructed ones — in a collaborative environment..
 
 ## Meet the Team
 
