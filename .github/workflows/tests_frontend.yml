@@ -1,0 +1,35 @@
+name: Run Frontend Tests
+
+on:
+  push:
+    branches: [feature/delightcoverage]
+  pull_request:
+    branches: [feature/delightcoverage]
+
+jobs:
+  frontend-tests:
+    name: Frontend Jest Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Jest tests with coverage
+        run: npm test --coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
