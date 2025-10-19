@@ -67,31 +67,12 @@ export const useDashboardData = () => {
 
       const data = await res.json();
       if (Array.isArray(data.courses)) {
-        // Check for duplicates
-        const courseIds = data.courses.map((c: Course) => c.id);
-        const uniqueIds = new Set(courseIds);
-        
-        if (courseIds.length !== uniqueIds.size) {
-          console.warn("⚠️ Duplicate courses in 'My Courses' from backend!");
-          
-          const seen = new Set<string>();
-          const uniqueCourses = data.courses.filter((course: Course) => {
-            if (seen.has(course.id)) return false;
-            seen.add(course.id);
-            return true;
-          });
-          
-          setMyCourses(uniqueCourses);
-          console.log("📚 My Courses (deduplicated):", uniqueCourses.length);
-        } else {
-          setMyCourses(data.courses);
-          console.log("📚 My Courses:", data.courses.length);
-        }
+        setMyCourses(data.courses);
       } else {
         console.error("Expected an array but got:", data);
       }
     } catch (error) {
-      console.error("Error creating course:", error);
+      console.error("Error fetching my courses:", error);
       proAlert.error("Something went wrong while loading your courses.");
     }
   };
@@ -112,31 +93,7 @@ export const useDashboardData = () => {
 
       const data = await res.json();
       if (Array.isArray(data.courses)) {
-        // Check for duplicates in the response
-        const courseIds = data.courses.map((c: Course) => c.id);
-        const uniqueIds = new Set(courseIds);
-        
-        if (courseIds.length !== uniqueIds.size) {
-          console.warn("⚠️ Duplicate courses detected from backend!");
-          console.warn("Total courses:", courseIds.length, "Unique:", uniqueIds.size);
-          
-          // Remove duplicates by keeping only first occurrence
-          const seen = new Set<string>();
-          const uniqueCourses = data.courses.filter((course: Course) => {
-            if (seen.has(course.id)) {
-              return false;
-            }
-            seen.add(course.id);
-            return true;
-          });
-          
-          setAllCourses(uniqueCourses);
-          console.log("📚 All Courses (deduplicated):", uniqueCourses.length, "courses");
-        } else {
-          setAllCourses(data.courses);
-          console.log("📚 All Courses:", data.courses.length, "courses (no duplicates)");
-          console.log("Course IDs:", data.courses.map((c: Course) => ({ id: c.id, title: c.title })));
-        }
+        setAllCourses(data.courses);
       } else {
         console.error("Expected an array but got:", data);
       }
@@ -163,26 +120,7 @@ export const useDashboardData = () => {
       const data = await res.json();
 
       if (Array.isArray(data.courses)) {
-        // Check for duplicates
-        const courseIds = data.courses.map((c: EnrolledCourse) => c.id);
-        const uniqueIds = new Set(courseIds);
-        
-        if (courseIds.length !== uniqueIds.size) {
-          console.warn("⚠️ Duplicate courses in 'Enrolled Courses' from backend!");
-          
-          const seen = new Set<string>();
-          const uniqueCourses = data.courses.filter((course: EnrolledCourse) => {
-            if (seen.has(course.id)) return false;
-            seen.add(course.id);
-            return true;
-          });
-          
-          setEnrolledCourses(uniqueCourses);
-          console.log("🎓 Enrolled Courses (deduplicated):", uniqueCourses.length);
-        } else {
-          setEnrolledCourses(data.courses);
-          console.log("🎓 Enrolled Courses:", data.courses.length);
-        }
+        setEnrolledCourses(data.courses);
       } else {
         console.error("Expected an array but got:", data);
       }

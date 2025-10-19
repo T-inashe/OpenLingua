@@ -600,18 +600,122 @@ const deleteLesson = (unitId:number, lessonId:number) => {
   }
 };
 const fileInputRef = useRef<HTMLInputElement | null>(null);
+const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+const [isRecording, setIsRecording] = useState(false);
 
-
-const handleUpload = (accept: string, field: keyof Lesson) => {
-if (!fileInputRef.current) return;
-fileInputRef.current.accept = accept;
-fileInputRef.current.onchange = (e: any) => {
-const file = e.target.files?.[0];
-if (file && selectedLesson) {
-updateSelectedLesson(field, file); // store filename, or replace with upload logic
-}
+// Get media duration
+const getMediaDuration = (file: File): Promise<number> => {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const media = file.type.startsWith('audio/') 
+      ? new Audio(url) 
+      : document.createElement('video');
+    
+    media.onloadedmetadata = () => {
+      const durationMinutes = Math.ceil(media.duration / 60);
+      URL.revokeObjectURL(url);
+      resolve(durationMinutes);
+    };
+    
+    media.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(5); // Default to 5 minutes if error
+    };
+    
+    media.src = url;
+  });
 };
-fileInputRef.current.click();
+
+const handleUpload = async (accept: string, field: keyof Lesson) => {
+  // Check if lesson type is text
+  if (selectedLesson?.type === "text") {
+    proAlert.error("Please select Audio or Video lesson type to upload media files");
+    return;
+  }
+
+  if (!fileInputRef.current) return;
+  fileInputRef.current.accept = accept;
+  fileInputRef.current.onchange = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (file && selectedLesson) {
+      // Auto-calculate duration for audio/video files
+      if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
+        try {
+          const duration = await getMediaDuration(file);
+          updateSelectedLesson("duration", duration);
+        } catch (error) {
+          console.error("Error getting media duration:", error);
+        }
+      }
+      updateSelectedLesson(field, file);
+    }
+  };
+  fileInputRef.current.click();
+};
+
+// Start recording audio or video
+const startRecording = async (type: 'audio' | 'video') => {
+  // Check if lesson type matches
+  if (selectedLesson?.type !== type) {
+    proAlert.error(`Please select ${type.charAt(0).toUpperCase() + type.slice(1)} lesson type to record ${type}`);
+    return;
+  }
+
+  try {
+    const constraints = type === 'audio' 
+      ? { audio: true } 
+      : { audio: true, video: true };
+    
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = mediaRecorder;
+    
+    const chunks: Blob[] = [];
+    
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    };
+    
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(chunks, { 
+        type: type === 'audio' ? 'audio/webm' : 'video/webm' 
+      });
+      const file = new File([blob], `recorded-${type}.webm`, { 
+        type: blob.type 
+      });
+      
+      // Auto-calculate duration
+      try {
+        const duration = await getMediaDuration(file);
+        updateSelectedLesson("duration", duration);
+      } catch (error) {
+        console.error("Error getting recorded media duration:", error);
+      }
+      
+      updateSelectedLesson("file", file);
+      
+      // Stop all tracks
+      stream.getTracks().forEach(track => track.stop());
+    };
+    
+    mediaRecorder.start();
+    setIsRecording(true);
+    proAlert.success(`Recording ${type}...`);
+  } catch (error) {
+    console.error("Error starting recording:", error);
+    proAlert.error(`Failed to start recording. Please check your ${type} permissions.`);
+  }
+};
+
+// Stop recording
+const stopRecording = () => {
+  if (mediaRecorderRef.current && isRecording) {
+    mediaRecorderRef.current.stop();
+    setIsRecording(false);
+    proAlert.success("Recording stopped");
+  }
 };
 
   // Quiz management functions
@@ -868,46 +972,78 @@ fileInputRef.current.click();
 
       case 3:
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-6">
+
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {
               selectedLesson ? (<div className="lg:col-span-1">
 <button
 onClick={() => setActiveStep(2)}
-className="mb-4 flex items-center space-x-2 text-gray-400 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition"
+className="mb-4 flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition"
 >
 <ArrowLeft size={16} />
 <span>Back to Structure</span>
 </button>
 
+<div className="bg-gradient-to-br from-cyan-500/5 to-purple-500/5 border-2 border-cyan-500/30 rounded-xl p-4 mb-4">
+  <div className="flex items-center gap-2 mb-2">
+    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Currently Editing</span>
+  </div>
+  <h4 className="text-gray-900 dark:text-white font-semibold">{selectedLesson.title}</h4>
+  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+    Unit {units.findIndex(u => u.id === selectedLesson.unitId) + 1} • {selectedLesson.type.charAt(0).toUpperCase() + selectedLesson.type.slice(1)} Lesson
+  </p>
+</div>
 
-<h3 className="text-white font-semibold text-lg mb-4">Lesson Types</h3>
+<h3 className="text-gray-900 dark:text-white font-semibold text-lg mb-4">Quick Actions</h3>
 {/* Lesson type cards */}
 {/* ... keep your lessonTypes rendering here ... */}
 
 
-<div className="mt-6 p-4 bg-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30">
-<h4 className="text-white font-medium mb-3">Media Library</h4>
+<div className="mt-6 p-4 bg-gradient-to-br from-white/10 to-white/5 dark:from-white/5 dark:to-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30 shadow-lg">
+<div className="flex items-center gap-2 mb-3">
+  <Upload size={18} className="text-cyan-400" />
+  <h4 className="text-gray-900 dark:text-white font-semibold">Upload Media</h4>
+</div>
+<p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Add images, audio, or video files to your lesson</p>
 <div className="space-y-2">
 <button
 onClick={() => handleUpload("audio/*", "file")}
-className="w-full flex items-center space-x-2 text-gray-400 hover:text-white transition-colors duration-200 p-2 hover:bg-white/5 rounded"
+className="w-full flex items-center justify-between space-x-2 text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all duration-200 p-3 hover:bg-cyan-500/10 rounded-lg border border-transparent hover:border-cyan-500/30 group"
 >
-<Upload size={16} />
-<span className="text-sm">Upload Audio</span>
+<div className="flex items-center gap-2">
+  <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center group-hover:bg-purple-500/30 transition">
+    <Play size={16} className="text-purple-400" />
+  </div>
+  <span className="text-sm font-medium">Audio File</span>
+</div>
+<span className="text-xs text-gray-500 dark:text-gray-500">.mp3, .wav</span>
 </button>
 <button
 onClick={() => handleUpload("image/*", "file")}
-className="w-full flex items-center space-x-2 text-gray-400 hover:text-white transition-colors duration-200 p-2 hover:bg-white/5 rounded"
+className="w-full flex items-center justify-between space-x-2 text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all duration-200 p-3 hover:bg-cyan-500/10 rounded-lg border border-transparent hover:border-cyan-500/30 group"
 >
-<Image size={16} />
-<span className="text-sm">Upload Images</span>
+<div className="flex items-center gap-2">
+  <div className="w-8 h-8 bg-pink-500/20 rounded-lg flex items-center justify-center group-hover:bg-pink-500/30 transition">
+    <Image size={16} className="text-pink-400" />
+  </div>
+  <span className="text-sm font-medium">Image File</span>
+</div>
+<span className="text-xs text-gray-500 dark:text-gray-500">.jpg, .png</span>
 </button>
 <button
 onClick={() => handleUpload("video/*", "file")}
-className="w-full flex items-center space-x-2 text-gray-400 hover:text-white transition-colors duration-200 p-2 hover:bg-white/5 rounded"
+className="w-full flex items-center justify-between space-x-2 text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all duration-200 p-3 hover:bg-cyan-500/10 rounded-lg border border-transparent hover:border-cyan-500/30 group"
 >
-<Play size={16} />
-<span className="text-sm">Upload Video</span>
+<div className="flex items-center gap-2">
+  <div className="w-8 h-8 bg-cyan-500/20 rounded-lg flex items-center justify-center group-hover:bg-cyan-500/30 transition">
+    <Play size={16} className="text-cyan-400" />
+  </div>
+  <span className="text-sm font-medium">Video File</span>
+</div>
+<span className="text-xs text-gray-500 dark:text-gray-500">.mp4, .mov</span>
 </button>
 </div>
 <input type="file" ref={fileInputRef} className="hidden" />
@@ -918,97 +1054,317 @@ className="w-full flex items-center space-x-2 text-gray-400 hover:text-white tra
 
 
 <div className="lg:col-span-2">
-<div className="bg-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30 p-6">
+<div className="bg-white/10 dark:bg-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30 p-6">
 <div className="flex items-center justify-between mb-6">
-<h3 className="text-white font-semibold text-lg">Content Editor</h3>
-
+<div>
+  <h3 className="text-gray-900 dark:text-white font-semibold text-lg">Content Editor</h3>
+  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Edit your lesson details and content below</p>
+</div>
 </div>
 {selectedLesson ? (
-<div className="space-y-4">
+<div className="space-y-6">
 {/* Title + Type */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>
-<label className="block text-white font-medium mb-2">Lesson Title</label>
+<label className="block text-gray-900 dark:text-white font-medium mb-2">
+  Lesson Title
+  <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">(Required)</span>
+</label>
 <input
 type="text"
 value={selectedLesson.title}
 onChange={(e) => updateSelectedLesson("title", e.target.value)}
-className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"
+placeholder="e.g., Introduction to Spanish Verbs"
+className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition"
 />
 </div>
 <div>
-<label className="block text-white font-medium mb-2">Lesson Type</label>
+<label className="block text-gray-900 dark:text-white font-medium mb-2">
+  Lesson Type
+  <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">(Choose one)</span>
+</label>
 <select
 value={selectedLesson.type}
 onChange={(e) => updateSelectedLesson("type", e.target.value)}
-className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"
+className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition"
 >
-<option value="text">Text Lesson</option>
-<option value="audio">Audio Lesson</option>
-<option value="video">Video Lesson</option>
+<option value="text">📝 Text Lesson</option>
+<option value="audio">🎵 Audio Lesson</option>
+<option value="video">🎥 Video Lesson</option>
 </select>
 </div>
 </div>
 
 
-{/* Duration */}
+{/* Duration - Only show for text lessons */}
+{selectedLesson.type === "text" && (
 <div>
-<label className="block text-white font-medium mb-2">Duration (minutes)</label>
+<label className="block text-gray-900 dark:text-white font-medium mb-2">
+  Duration (minutes)
+  <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">(How long will this lesson take?)</span>
+</label>
 <input
 type="number"
+min="0"
 value={selectedLesson.duration}
 onChange={(e) => updateSelectedLesson("duration", parseInt(e.target.value) || 0)}
-className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"
+placeholder="e.g., 15"
+className="w-full bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition"
 />
 </div>
+)}
 
+{/* Duration display for audio/video - auto-calculated */}
+{(selectedLesson.type === "audio" || selectedLesson.type === "video") && selectedLesson.duration > 0 && (
+  <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3">
+    <div className="flex items-center gap-2">
+      <Clock size={16} className="text-cyan-400" />
+      <span className="text-sm text-gray-700 dark:text-gray-300">
+        Duration: <strong className="text-cyan-600 dark:text-cyan-400">{selectedLesson.duration} minutes</strong> (auto-calculated from media file)
+      </span>
+    </div>
+  </div>
+)}
 
 {/* Content */}
 <div>
-<label className="block text-white font-medium mb-2">Lesson Content</label>
+<label className="block text-gray-900 dark:text-white font-medium mb-2">
+  Lesson Content
+  {selectedLesson.type === "text" && (
+    <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">(Write your lesson content here)</span>
+  )}
+  {selectedLesson.type === "audio" && (
+    <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">(Upload or record audio)</span>
+  )}
+  {selectedLesson.type === "video" && (
+    <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">(Upload or record video)</span>
+  )}
+</label>
 {selectedLesson.type === "quiz" ? (
-  <div className="rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 p-4 text-sm text-cyan-200 flex items-center justify-between gap-4">
+  <div className="rounded-lg border border-dashed border-cyan-500/40 bg-cyan-500/5 p-4 text-sm text-gray-700 dark:text-cyan-200 flex items-center justify-between gap-4">
     <span>
       Quizzes are managed in Step 5 (Quizzes). Use that section to create and manage course quizzes.
     </span>
     <button
       type="button"
       onClick={() => setActiveStep(5)}
-      className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20"
+      className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-sm font-medium text-cyan-600 dark:text-cyan-200 hover:bg-cyan-500/20"
     >
       Go to Quizzes
     </button>
   </div>
+) : selectedLesson.type === "audio" ? (
+  // Audio lesson interface
+  selectedLesson.file === null ? (
+    <div className="space-y-4">
+      {/* Upload or Record options */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Upload Audio */}
+        <div
+          onClick={() => handleUpload("audio/*", "file")}
+          className="cursor-pointer group border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-purple-500 dark:hover:border-purple-500 rounded-xl p-8 transition-all duration-300 hover:bg-purple-500/5"
+        >
+          <div className="flex flex-col items-center text-center space-y-3">
+            <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center group-hover:bg-purple-500/30 transition">
+              <Upload size={32} className="text-purple-500" />
+            </div>
+            <h4 className="text-gray-900 dark:text-white font-semibold">Upload Audio File</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Click to browse and upload<br />MP3, WAV, or other audio files
+            </p>
+          </div>
+        </div>
+
+        {/* Record Audio */}
+        <div
+          onClick={() => !isRecording && startRecording('audio')}
+          className={`cursor-pointer group border-2 border-dashed rounded-xl p-8 transition-all duration-300 ${
+            isRecording 
+              ? 'border-red-500 bg-red-500/10' 
+              : 'border-gray-300 dark:border-gray-600 hover:border-pink-500 dark:hover:border-pink-500 hover:bg-pink-500/5'
+          }`}
+        >
+          <div className="flex flex-col items-center text-center space-y-3">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center transition ${
+              isRecording 
+                ? 'bg-red-500/30 animate-pulse' 
+                : 'bg-pink-500/20 group-hover:bg-pink-500/30'
+            }`}>
+              {isRecording ? (
+                <div className="w-4 h-4 bg-red-500 rounded-sm" />
+              ) : (
+                <Play size={32} className="text-pink-500" />
+              )}
+            </div>
+            <h4 className="text-gray-900 dark:text-white font-semibold">
+              {isRecording ? 'Recording...' : 'Record Audio'}
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {isRecording ? 'Click below to stop' : 'Click to start recording audio'}
+            </p>
+            {isRecording && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  stopRecording();
+                }}
+                className="mt-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+              >
+                Stop Recording
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : (
+    // Audio file preview with remove option
+    <div className="space-y-4">
+      <div className="bg-purple-500/10 border-2 border-purple-500/30 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-gray-900 dark:text-white font-semibold flex items-center gap-2">
+            <Play size={20} className="text-purple-500" />
+            Audio File Uploaded
+          </h4>
+          <button
+            onClick={() => updateSelectedLesson("file", null)}
+            className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+        <audio
+          controls
+          className="w-full"
+          src={URL.createObjectURL(selectedLesson.file)}
+        />
+      </div>
+    </div>
+  )
+) : selectedLesson.type === "video" ? (
+  // Video lesson interface
+  selectedLesson.file === null ? (
+    <div className="space-y-4">
+      {/* Upload or Record options */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Upload Video */}
+        <div
+          onClick={() => handleUpload("video/*", "file")}
+          className="cursor-pointer group border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-cyan-500 dark:hover:border-cyan-500 rounded-xl p-8 transition-all duration-300 hover:bg-cyan-500/5"
+        >
+          <div className="flex flex-col items-center text-center space-y-3">
+            <div className="w-16 h-16 bg-cyan-500/20 rounded-full flex items-center justify-center group-hover:bg-cyan-500/30 transition">
+              <Upload size={32} className="text-cyan-500" />
+            </div>
+            <h4 className="text-gray-900 dark:text-white font-semibold">Upload Video File</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Click to browse and upload<br />MP4, MOV, or other video files
+            </p>
+          </div>
+        </div>
+
+        {/* Record Video */}
+        <div
+          onClick={() => !isRecording && startRecording('video')}
+          className={`cursor-pointer group border-2 border-dashed rounded-xl p-8 transition-all duration-300 ${
+            isRecording 
+              ? 'border-red-500 bg-red-500/10' 
+              : 'border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-500/5'
+          }`}
+        >
+          <div className="flex flex-col items-center text-center space-y-3">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center transition ${
+              isRecording 
+                ? 'bg-red-500/30 animate-pulse' 
+                : 'bg-blue-500/20 group-hover:bg-blue-500/30'
+            }`}>
+              {isRecording ? (
+                <div className="w-4 h-4 bg-red-500 rounded-sm" />
+              ) : (
+                <Play size={32} className="text-blue-500" />
+              )}
+            </div>
+            <h4 className="text-gray-900 dark:text-white font-semibold">
+              {isRecording ? 'Recording...' : 'Record Video'}
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {isRecording ? 'Click below to stop' : 'Click to start recording video'}
+            </p>
+            {isRecording && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  stopRecording();
+                }}
+                className="mt-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+              >
+                Stop Recording
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : (
+    // Video file preview with remove option
+    <div className="space-y-4">
+      <div className="bg-cyan-500/10 border-2 border-cyan-500/30 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-gray-900 dark:text-white font-semibold flex items-center gap-2">
+            <Play size={20} className="text-cyan-500" />
+            Video File Uploaded
+          </h4>
+          <button
+            onClick={() => updateSelectedLesson("file", null)}
+            className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+        <video
+          controls
+          className="w-full max-h-[400px] rounded-lg"
+          src={URL.createObjectURL(selectedLesson.file)}
+        />
+      </div>
+    </div>
+  )
 ) : selectedLesson.file === null ? (
+  // Text lesson interface
   <textarea
     rows={12}
     placeholder="Enter your lesson content here..."
     value={selectedLesson.content ? selectedLesson.content : ""}
     onChange={(e) => updateSelectedLesson("content", e.target.value)}
-    className="w-full bg-slate-800/50 border border-white/10 rounded-lg p-4 text-white resize-none"
+    className="w-full bg-white dark:bg-slate-800/50 border border-gray-300 dark:border-white/10 rounded-lg p-4 text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition"
   />
 ) : (
+  // Other file types (like images)
   <div className="w-full">
     {selectedLesson?.file?.type.startsWith("image/") ? (
-      <img
-        src={URL.createObjectURL(selectedLesson.file)}
-        alt="Preview"
-        className="max-w-full max-h-[400px] rounded-lg"
-      />
-    ) : selectedLesson?.file?.type.startsWith("audio/") ? (
-      <audio
-        controls
-        className="w-full"
-        src={URL.createObjectURL(selectedLesson.file)}
-      />
-    ) : selectedLesson?.file?.type.startsWith("video/") ? (
-      <video
-        controls
-        className="w-full max-h-[400px] rounded-lg"
-        src={URL.createObjectURL(selectedLesson.file)}
-      />
+      <div className="space-y-4">
+        <div className="bg-pink-500/10 border-2 border-pink-500/30 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-gray-900 dark:text-white font-semibold flex items-center gap-2">
+              <Image size={20} className="text-pink-500" />
+              Image File Uploaded
+            </h4>
+            <button
+              onClick={() => updateSelectedLesson("file", null)}
+              className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+          <img
+            src={URL.createObjectURL(selectedLesson.file)}
+            alt="Preview"
+            className="max-w-full max-h-[400px] rounded-lg mx-auto"
+          />
+        </div>
+      </div>
     ) : (
-      <p className="text-white">Unsupported file type: {selectedLesson.file.type}</p>
+      <p className="text-gray-900 dark:text-white">Unsupported file type: {selectedLesson.file.type}</p>
     )}
   </div>
 )}
@@ -1018,24 +1374,50 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
 </div>
 ) : (
 <div className="flex items-center justify-center min-h-[400px]">
-  <div className="max-w-md text-center">
+  <div className="max-w-2xl text-center">
     <div className="bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border-2 border-cyan-500/30 rounded-2xl p-8 shadow-xl">
       <FileText size={64} className="text-cyan-400 mx-auto mb-6 animate-pulse" />
-      <h3 className="text-2xl font-bold text-white mb-3">No Lesson Selected</h3>
-      <p className="text-cyan-100 text-lg mb-6">
-        Please select a lesson from the <span className="font-semibold text-cyan-300">Structure</span> panel to start editing content
+      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Ready to Add Content?</h3>
+      <p className="text-gray-700 dark:text-cyan-100 text-base mb-6">
+        You haven't selected a lesson yet. Here's what to do:
       </p>
+      
+      <div className="bg-white/5 dark:bg-black/20 rounded-lg p-6 mb-6 text-left space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 bg-cyan-500 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
+          <div className="flex-1">
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-1">Create Your Structure</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Go to the Structure tab and organize your course into units and lessons</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
+          <div className="flex-1">
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-1">Select a Lesson</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Click on any lesson from your structure to start editing its content</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
+          <div className="flex-1">
+            <h4 className="text-gray-900 dark:text-white font-semibold mb-1">Add Content</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Fill in lesson details, add text, or upload media files</p>
+          </div>
+        </div>
+      </div>
+      
       <button
         onClick={() => setActiveStep(2)}
-        className="flex items-center space-x-2 mx-auto bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:shadow-lg hover:shadow-cyan-500/50 transition-all duration-300 transform hover:scale-105"
+        className="flex items-center space-x-2 mx-auto bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:shadow-lg hover:shadow-cyan-500/50 transition-all duration-300 transform hover:scale-105 font-medium"
       >
         <ArrowLeft size={20} />
-        <span className="font-medium">Go to Structure</span>
+        <span>Go to Structure Tab</span>
       </button>
     </div>
   </div>
 </div>
 )}
+</div>
 </div>
 </div>
 </div>
@@ -1146,7 +1528,7 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
 
             {!editCourseId ? (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6 text-center">
-                <p className="text-yellow-300">Please save your course first before adding quizzes</p>
+                <p className="text-yellow-700 dark:text-yellow-300">Please save your course first before adding quizzes</p>
               </div>
             ) : loadingQuizzes ? (
               <div className="flex items-center justify-center py-12">
@@ -1257,6 +1639,14 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/dashboard')}
+                type="button"
+                className="flex items-center justify-center w-10 h-10 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 border border-gray-200 dark:border-white/15 transition-all"
+                title="Back to Dashboard"
+              >
+                <ArrowLeft size={20} />
+              </button>
               <button
                 onClick={handleLogoClick}
                 type="button"

@@ -24,7 +24,6 @@ router.get(
     failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/signin?error=google_auth_failed`
   }),
   (req, res) => {
-    console.log('✅ Google auth successful, user:', req.user.email);
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`);
   }
 );

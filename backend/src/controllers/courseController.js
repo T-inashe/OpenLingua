@@ -139,16 +139,40 @@ const createCourse = async (req, res) => {
   }
 };
 
-// Get all courses
+// Get all courses (optimized with selective fields)
 const getCourses = async (req, res) => {
   try {
     const courses = await prisma.course.findMany({
-      include: {
-        instructor: { select: { id: true, name: true, email: true } }
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        language: true,
+        level: true,
+        category: true,
+        hours: true,
+        public: true,
+        createdAt: true,
+        instructor: { 
+          select: { 
+            id: true, 
+            name: true, 
+            avatar: true 
+          } 
+        },
+        _count: {
+          select: {
+            enrollments: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
     res.json({ courses });
   } catch (error) {
+    console.error("Error fetching courses:", error);
     res.status(500).json({ error: "Error fetching courses" });
   }
 };
@@ -291,8 +315,33 @@ const getCoursesByUserId = async (req, res) => {
 
     const courses = await prisma.course.findMany({
       where: { instructorId: userId },
-      include: {
-        instructor: { select: { id: true, name: true, email: true } }
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        language: true,
+        level: true,
+        category: true,
+        hours: true,
+        public: true,
+        createdAt: true,
+        updatedAt: true,
+        instructor: { 
+          select: { 
+            id: true, 
+            name: true, 
+            avatar: true 
+          } 
+        },
+        _count: {
+          select: {
+            enrollments: true,
+            units: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
 
@@ -306,38 +355,29 @@ const getJoinedCoursesByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
 
+    // Optimized query: get distinct enrollments grouped by courseId
     const joinedCourses = await prisma.courseEnrollment.findMany({
       where: { userId: userId },
+      distinct: ['courseId'], // Get only one enrollment per course
       include: {
         course: {
           include: {
-            instructor: { select: { id: true, name: true } }
+            instructor: { select: { id: true, name: true, avatar: true } }
           }
         }
       },
       orderBy: {
-        createdAt: 'desc' // Get most recent enrollment first
+        createdAt: 'desc'
       }
     });
 
-    // Return courses with enrollment info (including progress)
-    // Remove duplicates by keeping only the most recent enrollment per course
-    const seen = new Set();
-    const coursesWithProgress = joinedCourses
-      .filter(entry => {
-        if (seen.has(entry.courseId)) {
-          console.warn(`⚠️ Duplicate enrollment detected for course ${entry.courseId}, user ${userId}`);
-          return false; // Skip duplicate
-        }
-        seen.add(entry.courseId);
-        return true;
-      })
-      .map(entry => ({
-        ...entry.course,
-        enrollmentId: entry.id,
-        progress: entry.progress,
-        enrolledAt: entry.createdAt
-      }));
+    // Map to return courses with enrollment info
+    const coursesWithProgress = joinedCourses.map(entry => ({
+      ...entry.course,
+      enrollmentId: entry.id,
+      progress: entry.progress,
+      enrolledAt: entry.createdAt
+    }));
 
     res.json({ courses: coursesWithProgress });
   } catch (error) {
@@ -410,45 +450,67 @@ const getForumMessagesByCourseId = async (req, res) => {
 const getCourseReviews = async (req, res) => {
   try {
     const { courseId } = req.params;
+    const userId = req.user?.id;
+    const limit = parseInt(req.query.limit) || 20; // Default to 20 reviews
+    const offset = parseInt(req.query.offset) || 0;
+
     const reviews = await prisma.courseReview.findMany({
       where: { courseId: courseId },
-      include: {
-        user: true,
-        course: {
+      select: {
+        id: true,
+        rating: true,
+        review: true,
+        createdAt: true,
+        updatedAt: true,
+        user: {
           select: {
             id: true,
-            title: true,
+            name: true,
+            avatar: true
           }
         },
         replies: {
-          include: {
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
             author: {
               select: {
                 id: true,
                 name: true,
-                email: true,
+                avatar: true
               }
             }
+          },
+          orderBy: {
+            createdAt: 'asc'
           }
         },
-        helpfulVotes: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              }
-            }
+        _count: {
+          select: {
+            helpfulVotes: true
           }
-        }
+        },
+        helpfulVotes: userId ? {
+          where: { userId },
+          select: { id: true }
+        } : false
       },
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      take: limit,
+      skip: offset
     });
 
-    res.json({ reviews });
+    // Format reviews with helpful vote status
+    const formattedReviews = reviews.map(review => ({
+      ...review,
+      helpfulCount: review._count.helpfulVotes,
+      userMarkedHelpful: review.helpfulVotes && review.helpfulVotes.length > 0
+    }));
+
+    res.json({ reviews: formattedReviews });
   } catch (error) {
     console.error("Error fetching course reviews:", error);
     res.status(500).json({ error: "Error fetching course reviews" });

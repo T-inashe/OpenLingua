@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 
 const prismaClientSingleton = () => {
   return new PrismaClient({
-    log: ['error'], // Only log errors for better performance
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 };
 

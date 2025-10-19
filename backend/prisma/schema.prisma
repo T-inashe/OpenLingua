@@ -62,6 +62,12 @@ model Course {
   units         CourseUnit[]
   forumPosts    ForumPost[]
   words         Word[]
+
+  @@index([instructorId])
+  @@index([category])
+  @@index([language])
+  @@index([level])
+  @@index([createdAt])
 }
 
 model CourseEnrollment {
@@ -74,6 +80,11 @@ model CourseEnrollment {
   course     Course       @relation(fields: [courseId], references: [id])
   user       User         @relation(fields: [userId], references: [id])
   QuizResult QuizResult[]
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([createdAt])
 }
 
 model Word {
@@ -122,6 +133,10 @@ model ForumPost {
   updatedAt DateTime @updatedAt
   author    User     @relation(fields: [authorId], references: [id])
   course    Course   @relation(fields: [courseId], references: [id])
+
+  @@index([courseId])
+  @@index([authorId])
+  @@index([createdAt])
 }
 
 model CourseReview {
@@ -136,6 +151,11 @@ model CourseReview {
   user         User                @relation(fields: [userId], references: [id])
   helpfulVotes ReviewHelpfulVote[]
   replies      ReviewReply[]
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@index([userId])
+  @@index([rating])
 }
 
 model ReviewReply {

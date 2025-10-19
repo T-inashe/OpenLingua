@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const passport = require('passport');
 const cors = require('cors');
+const compression = require('compression');
 const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 const prisma = require('./lib/prisma');
 const quizRoutes = require("./routes/quizRoutes");
@@ -9,6 +10,17 @@ const quizRoutes = require("./routes/quizRoutes");
 require('./config/passport');
 
 const app = express();
+
+// Enable gzip compression for all responses
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+  level: 6 // Balance between speed and compression ratio
+}));
 
 // CORS configuration - SIMPLIFIED
 const corsOptions = {
@@ -60,16 +72,13 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Debug middleware - enabled for debugging
-app.use((req, res, next) => {
-  console.log('=== Request Debug ===');
-  console.log('Method:', req.method);
-  console.log('Path:', req.path);
-  console.log('URL:', req.url);
-  console.log('User:', req.user?.email || 'undefined');
-  console.log('====================');
-  next();
-});
+// Debug middleware - only log in development if DEBUG env var is set
+if (process.env.DEBUG === 'true') {
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -93,7 +102,6 @@ app.get('/health', (req, res) => {
 
 // 404 handler
 app.use((req, res) => {
-  console.log('❌ 404 - Route not found:', req.path);
   res.status(404).json({ error: 'Not found', path: req.path });
 });
 

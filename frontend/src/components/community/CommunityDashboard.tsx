@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, MessageCircle, Calendar, Plus, LogOut } from "lucide-react";
+import { Users, MessageCircle, Calendar, Plus, LogOut, ArrowLeft } from "lucide-react";
 import LoaderOverlay from "../ui/LoaderOverlay";
 import { logoutRequest } from "../../utils/logout";
 import ThemeToggle from "../layout/ThemeToggle";
@@ -67,13 +67,23 @@ const CommunityDashboard = () => {
       {isLoggingOut && <LoaderOverlay message="Logging out..." />}
 
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/dashboard')}
-          type="button"
-          className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
-        >
-          OpenLingua
-        </button>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => navigate('/dashboard')}
+            type="button"
+            className="flex items-center justify-center w-10 h-10 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 border border-gray-200 dark:border-white/15 transition-all"
+            title="Back to Dashboard"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <button
+            onClick={() => navigate('/dashboard')}
+            type="button"
+            className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+          >
+            OpenLingua
+          </button>
+        </div>
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <button

@@ -108,22 +108,9 @@ const Dashboard = () => {
       emptyMessage = "No courses match your filters.";
     }
 
-    // Debug: Check for duplicate IDs in the courses to render
-    const courseIds = coursesToRender.map(c => c.id);
-    const uniqueIds = new Set(courseIds);
-    if (courseIds.length !== uniqueIds.size) {
-      console.error("🚨 DUPLICATE COURSE IDs DETECTED IN RENDER!");
-      console.error("Total courses:", courseIds.length, "Unique:", uniqueIds.size);
-      console.error("Course IDs:", courseIds);
-      
-      // Find which IDs are duplicated
-      const duplicates = courseIds.filter((id, index) => courseIds.indexOf(id) !== index);
-      console.error("Duplicate IDs:", [...new Set(duplicates)]);
-    }
-
     if (coursesToRender.length === 0) {
       return (
-        <div className="col-span-full text-center text-gray-400 text-sm">{emptyMessage}</div>
+        <div className="col-span-full text-center text-gray-600 dark:text-gray-400 text-sm">{emptyMessage}</div>
       );
     }
 
@@ -150,7 +137,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-950 dark:via-purple-950 dark:to-slate-950 relative">
       {isPageLoading && <LoaderOverlay message="Loading dashboard..." />}
 
       <DashboardHeader user={user} userInitials={userInitials} isVisible={isVisible} />

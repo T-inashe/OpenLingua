@@ -4,7 +4,7 @@ import config from "../../config";
 
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar, LogOut, Clock, Target } from "lucide-react";
+import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar, LogOut, Clock, Target, ArrowLeft } from "lucide-react";
 import LoaderOverlay from "../ui/LoaderOverlay";
 import ThemeToggle from "../layout/ThemeToggle";
 import { useProAlert } from "../../context/ProAlertContext";
@@ -787,13 +787,23 @@ const toggleLessonDone = async (lessonId: string) => {
       {/* Header */}
       <header className={`sticky top-0 z-50 bg-slate-900/60 backdrop-blur-lg border-b border-white/10 transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`}>
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
-            type="button"
-            onClick={() => navigate('/dashboard')}
-          >
-            OpenLingua
-          </button>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/dashboard')}
+              type="button"
+              className="flex items-center justify-center w-10 h-10 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 border border-gray-200 dark:border-white/15 transition-all"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <button
+              className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+              type="button"
+              onClick={() => navigate('/dashboard')}
+            >
+              OpenLingua
+            </button>
+          </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-400 hover:text-white transition-colors duration-200">
