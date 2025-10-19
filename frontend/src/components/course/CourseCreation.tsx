@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import config from "../config";
+import config from "../../config";
 import {
   Plus,
   Trash2,
@@ -20,11 +20,11 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import LoaderOverlay from "./Loader";
-import { logoutRequest } from "../utils/logout";
-import ThemeToggle from "./ThemeToggle";
-import { useProAlert } from "../context/ProAlertContext";
-import { handleUnauthorized } from "../utils/handleUnauthorized";
+import LoaderOverlay from "../ui/LoaderOverlay";
+import { logoutRequest } from "../../utils/logout";
+import ThemeToggle from "../layout/ThemeToggle";
+import { useProAlert } from "../../context/ProAlertContext";
+import { handleUnauthorized } from "../../utils/handleUnauthorized";
 interface QuizOption {
   id: number;
   text: string;
@@ -75,7 +75,7 @@ const CourseCreation = () => {
  const navigate = useNavigate()
  const searchParams = new URLSearchParams(window.location.search);
  const editCourseId = searchParams.get('edit');
- const [isEditMode, setIsEditMode] = useState<boolean>(!!editCourseId);
+ const isEditMode = !!editCourseId; // Derived value, no need for state
  const [isLoadingCourse, setIsLoadingCourse] = useState<boolean>(!!editCourseId);
   const proAlert = useProAlert();
   const [isVisible, setIsVisible] = useState(false);
@@ -648,6 +648,38 @@ const CourseCreation = () => {
     proAlert.info("Please fill in all required fields.");
     return;
   }
+
+  // Check if course title already exists (case-insensitive)
+  try {
+    const checkResponse = await fetch(`${config.BACKEND_URL}/api/courses/`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+
+    if (checkResponse.ok) {
+      const { courses } = await checkResponse.json();
+      const normalizedTitle = courseData.title.toLowerCase().trim();
+      
+      const duplicateCourse = courses.find((course: any) => {
+        // Skip checking against the current course when editing
+        if (isEditMode && course.id === editCourseId) {
+          return false;
+        }
+        return course.title.toLowerCase().trim() === normalizedTitle;
+      });
+
+      if (duplicateCourse) {
+        proAlert.error(
+          `A course titled "${duplicateCourse.title}" already exists. Please choose a different title.`
+        );
+        return;
+      }
+    }
+  } catch (error) {
+    console.warn("Could not check for duplicate titles:", error);
+    // Continue with creation anyway - backend will catch it
+  }
+
 // upload files first
   await Promise.all(
     units.map(async (unit) => {
@@ -714,7 +746,18 @@ const CourseCreation = () => {
     } else {
       const errorData = await response.json();
       console.error(isEditMode ? "Failed to update course:" : "Failed to create course:", errorData);
-      proAlert.error(isEditMode ? "Failed to update course." : "Failed to create course.");
+      
+      // Handle specific error cases
+      if (response.status === 409) {
+        // Duplicate course title
+        const existingTitle = errorData.existingCourse?.title || courseData.title;
+        const createdBy = errorData.existingCourse?.createdBy || "another instructor";
+        proAlert.error(
+          `A course titled "${existingTitle}" already exists (created by ${createdBy}). Please choose a different title.`
+        );
+      } else {
+        proAlert.error(errorData.error || (isEditMode ? "Failed to update course." : "Failed to create course."));
+      }
     }
   } catch (error) {
     console.error("Error saving course:", error);

@@ -4,6 +4,7 @@ const passport = require('passport');
 const cors = require('cors');
 const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 const prisma = require('./lib/prisma');
+const quizRoutes = require("./routes/quizRoutes");
 
 require('./config/passport');
 
@@ -59,21 +60,27 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Debug middleware - disabled for performance
-// Uncomment for debugging if needed
-// app.use((req, res, next) => {
-//   console.log('=== Request Debug ===');
-//   console.log('Path:', req.path);
-//   console.log('User:', req.user?.email || 'undefined');
-//   console.log('====================');
-//   next();
-// });
+// Debug middleware - enabled for debugging
+app.use((req, res, next) => {
+  console.log('=== Request Debug ===');
+  console.log('Method:', req.method);
+  console.log('Path:', req.path);
+  console.log('URL:', req.url);
+  console.log('User:', req.user?.email || 'undefined');
+  console.log('====================');
+  next();
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/courses', require('./routes/courseRoutes'));
 app.use('/api/vocab', require('./routes/vocabRoutes'));
 app.use('/api/forum', require('./routes/forumRoutes'));
+app.use("/api", quizRoutes);
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Language Learning API is running!', timestamp: new Date().toISOString() });
+});
 
 // Health check
 app.get('/health', (req, res) => {

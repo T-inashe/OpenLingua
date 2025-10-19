@@ -1,36 +1,91 @@
 import React, { useState, useEffect } from "react";
-import config from "../config";
-import { Link } from "react-router-dom";
-import '../css/LandingPage.css';
+import config from "../../config";
+import { Link, useNavigate } from "react-router-dom";
+import ProfileForm from "./ProfileForm";
+import '../../css/LandingPage.css';
 
-// Type definitions
 interface FormData {
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 interface Errors {
   email?: string;
   password?: string;
+  confirmPassword?: string;
   submit?: string;
 }
 
-const SignIn: React.FC = () => {
+const SignUp: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [tempUserData, setTempUserData] = useState<{email: string; password: string} | null>(null);
   const [formData, setFormData] = useState<FormData>({
     email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
   const [errors, setErrors] = useState<Errors>({});
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Force dark mode on sign-in page
+    // Force dark mode on sign-up page
     document.body.classList.remove('theme-light');
     document.body.classList.add('theme-dark');
     
     setIsVisible(true);
   }, []);
+
+  // Handle profile completion - this is where actual registration happens
+  const handleProfileComplete = async (name: string) => {
+    if (!tempUserData) {
+      console.error('No user data stored');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${config.BACKEND_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Important for cookies
+        body: JSON.stringify({
+          email: tempUserData.email,
+          password: tempUserData.password,
+          name: name
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('Registration successful:', data);
+        // Cookies are set by the backend, user is now logged in
+        navigate('/dashboard');
+      } else {
+        // Handle registration error - maybe go back to signup form
+        setShowProfileForm(false);
+        setErrors({ submit: data.error || 'Registration failed' });
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setShowProfileForm(false);
+      setErrors({ submit: 'Network error. Please try again.' });
+    }
+  };
+
+  // If profile form should be shown, render it instead
+  if (showProfileForm) {
+    return (
+      <ProfileForm 
+        onProfileComplete={handleProfileComplete}
+        userEmail={tempUserData?.email || ''}
+      />
+    );
+  }
 
   const handleGoogleLogin = (): void => {
     try {
@@ -48,58 +103,14 @@ const SignIn: React.FC = () => {
     }
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Errors = {};
-    
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e?: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
-    if (e) e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    setLoading(true);
-    
-    try {
-      const response = await fetch(`${config.BACKEND_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+  const handleSubmit =  () => {
+        setTempUserData({
           email: formData.email,
-          password: formData.password,
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Handle successful signin - redirect or update app state
-        console.log('Signin successful:', data);
-        // You might want to store tokens, redirect, etc.
-      } else {
-        setErrors({ submit: data.message || 'Authentication failed' });
-      }
-    } catch (error) {
-      setErrors({ submit: 'Network error. Please try again.' });
-    } finally {
-      setLoading(false);
-    }
+          password: formData.password
+        });
+        setShowProfileForm(true);
+    
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -109,7 +120,6 @@ const SignIn: React.FC = () => {
       [name]: value
     }));
     
-    // Clear error when user starts typing
     if (errors[name as keyof Errors]) {
       setErrors(prev => ({
         ...prev,
@@ -125,7 +135,7 @@ const SignIn: React.FC = () => {
   };
 
   return (
-    <div className="signin-page dark !bg-gradient-to-br !from-slate-900 !via-purple-900 !to-slate-900 min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#0f172a' }}>
+    <div className="signup-page dark !bg-gradient-to-br !from-slate-900 !via-purple-900 !to-slate-900 min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#0f172a' }}>
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
@@ -144,21 +154,21 @@ const SignIn: React.FC = () => {
       </Link>
 
       {/* Logo */}
-      <div className="absolute top-8 left-1/2 transform -translate-x-1/2">
+      <div className="absolute top-6 left-1/2 transform -translate-x-1/2">
         <div className="text-2xl font-bold bg-gradient-to-r from-cyan-500 to-purple-400 bg-clip-text text-transparent">
           OpenLingua
         </div>
       </div>
 
-      {/* Sign In Form */}
+      {/* Sign Up Form */}
       <div className="relative z-10 w-full max-w-md">
         <div className={`w-full max-w-md transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
           <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl p-8 border border-slate-700/50 shadow-2xl">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-500 to-purple-400 bg-clip-text text-transparent">
-                Welcome Back
+                Join OpenLingua
               </h2>
-              <p className="text-gray-400 mt-2">Sign in to continue your journey</p>
+              <p className="text-gray-400 mt-2">Start your language learning journey</p>
             </div>
 
             <div className="space-y-6">
@@ -185,9 +195,23 @@ const SignIn: React.FC = () => {
                   onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
                   className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
-                  placeholder="Enter your password"
+                  placeholder="Create a password (min 8 characters)"
                 />
                 {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password}</p>}
+              </div>
+
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+                  placeholder="Confirm your password"
+                />
+                {errors.confirmPassword && <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>}
               </div>
 
               {errors.submit && <p className="text-red-400 text-sm text-center">{errors.submit}</p>}
@@ -197,7 +221,7 @@ const SignIn: React.FC = () => {
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 hover:scale-105 transform disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Signing In...' : 'Sign In'}
+                {loading ? 'Checking...' : 'Continue'}
               </button>
             </div>
 
@@ -236,10 +260,10 @@ const SignIn: React.FC = () => {
             </div>
 
             <p className="text-center text-gray-400 mt-6">
-              Don't have an account?{' '}
-              <Link to="/signUp">
+              Already have an account?{' '}
+              <Link to="/signIn">
                 <span className="text-purple-400 hover:text-purple-300 font-medium transition-colors duration-300 cursor-pointer">
-                    Sign up
+                    Sign in
                 </span>
               </Link>
             </p>
@@ -250,4 +274,4 @@ const SignIn: React.FC = () => {
   );
 };
 
-export default SignIn;
+export default SignUp;

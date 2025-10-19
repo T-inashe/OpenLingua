@@ -54,7 +54,36 @@ const createCourse = async (req, res) => {
     } = req.body;
 
     if (!title || !description) {
-      //return res.status(400).json({ error: "Title and language are required" });
+      return res.status(400).json({ error: "Title and description are required" });
+    }
+
+    // Check if a course with the same title already exists (case-insensitive)
+    const existingCourse = await prisma.course.findFirst({
+      where: {
+        title: {
+          equals: title,
+          mode: 'insensitive' // Case-insensitive comparison
+        }
+      },
+      select: {
+        id: true,
+        title: true,
+        instructor: {
+          select: {
+            name: true
+          }
+        }
+      }
+    });
+
+    if (existingCourse) {
+      return res.status(409).json({ 
+        error: "A course with this title already exists",
+        existingCourse: {
+          title: existingCourse.title,
+          createdBy: existingCourse.instructor.name
+        }
+      });
     }
 
     const course = await prisma.course.create({
@@ -129,7 +158,22 @@ const joinCourse = async (req, res) => {
   try {
     const { courseId, userId } = req.body;
 
-    await prisma.courseEnrollment.create({
+    // Check if user is already enrolled in this course
+    const existingEnrollment = await prisma.courseEnrollment.findFirst({
+      where: {
+        userId: userId,
+        courseId: courseId
+      }
+    });
+
+    if (existingEnrollment) {
+      return res.status(400).json({ 
+        error: "You are already enrolled in this course",
+        enrollmentId: existingEnrollment.id 
+      });
+    }
+
+    const enrollment = await prisma.courseEnrollment.create({
       data: {
         userId: userId,
         courseId: courseId,
@@ -137,7 +181,10 @@ const joinCourse = async (req, res) => {
       }
     });
 
-    res.json({ message: "Joined course successfully" });
+    res.json({ 
+      message: "Joined course successfully",
+      enrollmentId: enrollment.id 
+    });
   } catch (error) {
     console.error("Join course error:", error);
     res.status(500).json({ error: "Could not join course" });
@@ -267,16 +314,30 @@ const getJoinedCoursesByUserId = async (req, res) => {
             instructor: { select: { id: true, name: true } }
           }
         }
+      },
+      orderBy: {
+        createdAt: 'desc' // Get most recent enrollment first
       }
     });
 
     // Return courses with enrollment info (including progress)
-    const coursesWithProgress = joinedCourses.map(entry => ({
-      ...entry.course,
-      enrollmentId: entry.id,
-      progress: entry.progress,
-      enrolledAt: entry.createdAt
-    }));
+    // Remove duplicates by keeping only the most recent enrollment per course
+    const seen = new Set();
+    const coursesWithProgress = joinedCourses
+      .filter(entry => {
+        if (seen.has(entry.courseId)) {
+          console.warn(`⚠️ Duplicate enrollment detected for course ${entry.courseId}, user ${userId}`);
+          return false; // Skip duplicate
+        }
+        seen.add(entry.courseId);
+        return true;
+      })
+      .map(entry => ({
+        ...entry.course,
+        enrollmentId: entry.id,
+        progress: entry.progress,
+        enrolledAt: entry.createdAt
+      }));
 
     res.json({ courses: coursesWithProgress });
   } catch (error) {
@@ -456,6 +517,40 @@ const updateCourse = async (req, res) => {
       discussions,
       info
     } = req.body;
+
+    // If title is being changed, check if new title already exists
+    if (title && title !== course.title) {
+      const existingCourse = await prisma.course.findFirst({
+        where: {
+          title: {
+            equals: title,
+            mode: 'insensitive'
+          },
+          id: {
+            not: courseId // Exclude current course
+          }
+        },
+        select: {
+          id: true,
+          title: true,
+          instructor: {
+            select: {
+              name: true
+            }
+          }
+        }
+      });
+
+      if (existingCourse) {
+        return res.status(409).json({ 
+          error: "A course with this title already exists",
+          existingCourse: {
+            title: existingCourse.title,
+            createdBy: existingCourse.instructor.name
+          }
+        });
+      }
+    }
 
     const updated = await prisma.course.update({
       where: { id: courseId },

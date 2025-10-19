@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import '../css/LandingPage.css';
+import '../../css/LandingPage.css';
 
 const menus = ['Home', 'About', 'Testimonials', 'Contact']
 

@@ -1,13 +1,13 @@
 
 // import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import LandingPage from './components/landingPage';
-import SignIn from './components/signIn'
-import SignUp from './components/signUp';
-import CourseDashboard from './components/courseDashboard';
+import LandingPage from './components/pages/LandingPage';
+import SignIn from './components/auth/SignIn'
+import SignUp from './components/auth/SignUp';
+import CourseDashboard from './components/course/CourseDashboard';
 import Dashboard from './components/dashboard';
-import CourseCreation from './components/courseCreation';
-import CommunityDashboard from './components/communityDashboard';
+import CourseCreation from './components/course/CourseCreation';
+import CommunityDashboard from './components/community/CommunityDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { ProAlertProvider } from './context/ProAlertContext';
 
