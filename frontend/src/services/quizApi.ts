@@ -3,7 +3,11 @@ import config from '../config';
 import type { QuizQuestion, QuizData, Quiz, QuizAttempt } from '../types/quiz';
 
 const quizFetch = async (path: string, options: RequestInit = {}): Promise<Response> => {
-  const url = `${config.BASE_API_URL}${path}`;
+  // Use Vite proxy in development to avoid CORS, external URL in production
+    const baseUrl = (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.DEV)
+      ? '/quiz-api' // Vite dev proxy base
+      : config.BASE_API_URL; // Production external API base
+    const url = `${baseUrl}${path}`;
   return fetch(url, {
     credentials: 'omit',
     headers: {
