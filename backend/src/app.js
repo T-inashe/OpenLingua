@@ -26,9 +26,9 @@ app.use(compression({
 const corsOptions = {
   origin: [
     'http://localhost:5173',
-    'http://localhost:3000',
+    'http://localhost:8080',
     'https://openlingua-gch4g8bsfmhahkhm.eastus-01.azurewebsites.net',
-    'https://nice-beach-0bc35a310.4.azurestaticapps.net'
+    'https://witty-hill-0b304211e.2.azurestaticapps.net'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
