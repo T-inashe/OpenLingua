@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1760895311537" clover="3.2.0">
+  <project timestamp="1760895311537" name="All files">
+    <metrics statements="344" coveredstatements="334" conditionals="243" coveredconditionals="232" methods="92" coveredmethods="88" elements="679" coveredelements="654" complexity="0" loc="344" ncloc="344" packages="9" files="20" classes="20"/>
+    <package name="frontend">
+      <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+      <file name="styleMock.js" path="C:\Users\mirth\codetests\OpenLingua\frontend\styleMock.js">
+        <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <line num="1" count="3" type="stmt"/>
+      </file>
+    </package>
+    <package name="frontend.src">
+      <metrics statements="4" coveredstatements="4" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+      <file name="config.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\config.tsx">
+        <metrics statements="4" coveredstatements="4" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <line num="4" count="7" type="stmt"/>
+        <line num="5" count="7" type="stmt"/>
+        <line num="6" count="7" type="stmt"/>
+        <line num="7" count="7" type="stmt"/>
+      </file>
+    </package>
+    <package name="frontend.src.components.auth">
+      <metrics statements="147" coveredstatements="140" conditionals="84" coveredconditionals="74" methods="31" coveredmethods="30"/>
+      <file name="ProfileForm.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\auth\ProfileForm.tsx">
+        <metrics statements="35" coveredstatements="35" conditionals="24" coveredconditionals="24" methods="9" coveredmethods="9"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="17" count="2" type="stmt"/>
+        <line num="18" count="90" type="stmt"/>
+        <line num="19" count="90" type="stmt"/>
+        <line num="22" count="90" type="stmt"/>
+        <line num="23" count="90" type="stmt"/>
+        <line num="25" count="90" type="stmt"/>
+        <line num="26" count="12" type="stmt"/>
+        <line num="29" count="90" type="stmt"/>
+        <line num="30" count="9" type="stmt"/>
+        <line num="32" count="9" type="cond" truecount="2" falsecount="0"/>
+        <line num="33" count="1" type="stmt"/>
+        <line num="34" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="35" count="2" type="stmt"/>
+        <line num="38" count="9" type="stmt"/>
+        <line num="39" count="9" type="stmt"/>
+        <line num="42" count="90" type="stmt"/>
+        <line num="43" count="9" type="cond" truecount="2" falsecount="0"/>
+        <line num="45" count="9" type="cond" truecount="2" falsecount="0"/>
+        <line num="47" count="6" type="stmt"/>
+        <line num="49" count="6" type="stmt"/>
+        <line num="50" count="6" type="stmt"/>
+        <line num="52" count="1" type="stmt"/>
+        <line num="53" count="1" type="stmt"/>
+        <line num="55" count="6" type="stmt"/>
+        <line num="59" count="90" type="stmt"/>
+        <line num="60" count="53" type="stmt"/>
+        <line num="61" count="53" type="stmt"/>
+        <line num="66" count="53" type="cond" truecount="2" falsecount="0"/>
+        <line num="67" count="1" type="stmt"/>
+        <line num="74" count="90" type="stmt"/>
+        <line num="75" count="54" type="cond" truecount="2" falsecount="0"/>
+        <line num="76" count="1" type="stmt"/>
+        <line num="80" count="90" type="stmt"/>
+        <line num="175" count="2" type="stmt"/>
+      </file>
+      <file name="SignIn.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\auth\SignIn.tsx">
+        <metrics statements="56" coveredstatements="54" conditionals="30" coveredconditionals="29" methods="11" coveredmethods="11"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="19" count="159" type="stmt"/>
+        <line num="20" count="159" type="stmt"/>
+        <line num="24" count="159" type="stmt"/>
+        <line num="25" count="159" type="stmt"/>
+        <line num="27" count="159" type="stmt"/>
+        <line num="29" count="10" type="stmt"/>
+        <line num="30" count="10" type="stmt"/>
+        <line num="32" count="10" type="stmt"/>
+        <line num="35" count="159" type="stmt"/>
+        <line num="36" count="1" type="stmt"/>
+        <line num="38" count="1" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="44" count="159" type="stmt"/>
+        <line num="45" count="1" type="stmt"/>
+        <line num="47" count="1" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="53" count="159" type="stmt"/>
+        <line num="54" count="7" type="stmt"/>
+        <line num="56" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="57" count="1" type="stmt"/>
+        <line num="58" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="59" count="2" type="stmt"/>
+        <line num="62" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="63" count="1" type="stmt"/>
+        <line num="64" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="65" count="2" type="stmt"/>
+        <line num="68" count="7" type="stmt"/>
+        <line num="69" count="7" type="stmt"/>
+        <line num="72" count="159" type="stmt"/>
+        <line num="73" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="75" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="77" count="4" type="stmt"/>
+        <line num="79" count="4" type="stmt"/>
+        <line num="80" count="4" type="stmt"/>
+        <line num="91" count="3" type="stmt"/>
+        <line num="93" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="95" count="2" type="stmt"/>
+        <line num="98" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="101" count="1" type="stmt"/>
+        <line num="103" count="4" type="stmt"/>
+        <line num="107" count="159" type="stmt"/>
+        <line num="108" count="129" type="stmt"/>
+        <line num="109" count="129" type="stmt"/>
+        <line num="115" count="129" type="cond" truecount="2" falsecount="0"/>
+        <line num="116" count="2" type="stmt"/>
+        <line num="123" count="159" type="stmt"/>
+        <line num="124" count="128" type="cond" truecount="2" falsecount="0"/>
+        <line num="125" count="1" type="stmt"/>
+        <line num="129" count="159" type="stmt"/>
+        <line num="255" count="1" type="stmt"/>
+      </file>
+      <file name="SignUp.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\auth\SignUp.tsx">
+        <metrics statements="56" coveredstatements="51" conditionals="30" coveredconditionals="21" methods="11" coveredmethods="10"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="20" count="1" type="stmt"/>
+        <line num="21" count="213" type="stmt"/>
+        <line num="22" count="213" type="stmt"/>
+        <line num="23" count="213" type="stmt"/>
+        <line num="24" count="213" type="stmt"/>
+        <line num="29" count="213" type="stmt"/>
+        <line num="30" count="213" type="stmt"/>
+        <line num="31" count="213" type="stmt"/>
+        <line num="33" count="213" type="stmt"/>
+        <line num="35" count="8" type="stmt"/>
+        <line num="36" count="8" type="stmt"/>
+        <line num="38" count="8" type="stmt"/>
+        <line num="42" count="213" type="stmt"/>
+        <line num="43" count="3" type="cond" truecount="1" falsecount="1"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="48" count="3" type="stmt"/>
+        <line num="49" count="3" type="stmt"/>
+        <line num="62" count="2" type="stmt"/>
+        <line num="64" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="65" count="1" type="stmt"/>
+        <line num="67" count="1" type="stmt"/>
+        <line num="70" count="1" type="stmt"/>
+        <line num="71" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="74" count="1" type="stmt"/>
+        <line num="75" count="1" type="stmt"/>
+        <line num="76" count="1" type="stmt"/>
+        <line num="81" count="213" type="cond" truecount="2" falsecount="0"/>
+        <line num="82" count="5" type="stmt"/>
+        <line num="90" count="208" type="stmt"/>
+        <line num="91" count="1" type="stmt"/>
+        <line num="93" count="1" type="stmt"/>
+        <line num="95" count="0" type="stmt"/>
+        <line num="99" count="208" type="stmt"/>
+        <line num="100" count="1" type="stmt"/>
+        <line num="102" count="1" type="stmt"/>
+        <line num="104" count="0" type="stmt"/>
+        <line num="109" count="208" type="stmt"/>
+        <line num="110" count="5" type="stmt"/>
+        <line num="114" count="5" type="stmt"/>
+        <line num="118" count="208" type="stmt"/>
+        <line num="119" count="190" type="stmt"/>
+        <line num="120" count="190" type="stmt"/>
+        <line num="125" count="190" type="cond" truecount="1" falsecount="1"/>
+        <line num="126" count="0" type="stmt"/>
+        <line num="133" count="208" type="stmt"/>
+        <line num="134" count="191" type="cond" truecount="2" falsecount="0"/>
+        <line num="135" count="1" type="stmt"/>
+        <line num="139" count="208" type="stmt"/>
+        <line num="279" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="frontend.src.components.community">
+      <metrics statements="82" coveredstatements="82" conditionals="65" coveredconditionals="65" methods="28" coveredmethods="28"/>
+      <file name="CommunityDashboard.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\community\CommunityDashboard.tsx">
+        <metrics statements="42" coveredstatements="42" conditionals="10" coveredconditionals="10" methods="14" coveredmethods="14"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="10" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="25" count="1" type="stmt"/>
+        <line num="31" count="1" type="stmt"/>
+        <line num="38" count="1" type="stmt"/>
+        <line num="39" count="168" type="stmt"/>
+        <line num="40" count="168" type="stmt"/>
+        <line num="41" count="168" type="stmt"/>
+        <line num="44" count="1" type="stmt"/>
+        <line num="45" count="42" type="stmt"/>
+        <line num="46" count="42" type="stmt"/>
+        <line num="47" count="42" type="stmt"/>
+        <line num="48" count="42" type="stmt"/>
+        <line num="49" count="42" type="stmt"/>
+        <line num="51" count="126" type="cond" truecount="2" falsecount="0"/>
+        <line num="53" count="42" type="stmt"/>
+        <line num="54" count="3" type="stmt"/>
+        <line num="55" count="3" type="stmt"/>
+        <line num="56" count="3" type="stmt"/>
+        <line num="57" count="2" type="stmt"/>
+        <line num="59" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="60" count="1" type="stmt"/>
+        <line num="62" count="1" type="stmt"/>
+        <line num="65" count="1" type="stmt"/>
+        <line num="66" count="1" type="stmt"/>
+        <line num="70" count="42" type="stmt"/>
+        <line num="76" count="1" type="stmt"/>
+        <line num="105" count="84" type="stmt"/>
+        <line num="106" count="84" type="stmt"/>
+        <line num="110" count="3" type="stmt"/>
+        <line num="131" count="6" type="stmt"/>
+        <line num="167" count="84" type="stmt"/>
+        <line num="184" count="126" type="stmt"/>
+        <line num="198" count="1" type="stmt"/>
+        <line num="221" count="1" type="stmt"/>
+      </file>
+      <file name="ForumSection.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\community\ForumSection.tsx">
+        <metrics statements="18" coveredstatements="18" conditionals="21" coveredconditionals="21" methods="5" coveredmethods="5"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="4" count="2" type="stmt"/>
+        <line num="13" count="2" type="stmt"/>
+        <line num="14" count="57" type="stmt"/>
+        <line num="15" count="57" type="stmt"/>
+        <line num="17" count="57" type="stmt"/>
+        <line num="19" count="57" type="stmt"/>
+        <line num="20" count="9" type="stmt"/>
+        <line num="21" count="9" type="cond" truecount="4" falsecount="0"/>
+        <line num="23" count="7" type="stmt"/>
+        <line num="24" count="7" type="stmt"/>
+        <line num="25" count="7" type="stmt"/>
+        <line num="26" count="5" type="stmt"/>
+        <line num="31" count="7" type="stmt"/>
+        <line num="35" count="57" type="stmt"/>
+        <line num="60" count="15" type="stmt"/>
+        <line num="100" count="176" type="stmt"/>
+      </file>
+      <file name="ReviewsSection.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\community\ReviewsSection.tsx">
+        <metrics statements="22" coveredstatements="22" conditionals="34" coveredconditionals="34" methods="9" coveredmethods="9"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="4" count="2" type="stmt"/>
+        <line num="14" count="2" type="stmt"/>
+        <line num="21" count="64" type="stmt"/>
+        <line num="22" count="64" type="stmt"/>
+        <line num="24" count="64" type="cond" truecount="3" falsecount="0"/>
+        <line num="26" count="64" type="stmt"/>
+        <line num="27" count="8" type="stmt"/>
+        <line num="28" count="8" type="cond" truecount="4" falsecount="0"/>
+        <line num="30" count="6" type="stmt"/>
+        <line num="31" count="6" type="stmt"/>
+        <line num="32" count="6" type="stmt"/>
+        <line num="33" count="4" type="stmt"/>
+        <line num="38" count="6" type="stmt"/>
+        <line num="42" count="64" type="stmt"/>
+        <line num="63" count="143" type="stmt"/>
+        <line num="90" count="715" type="stmt"/>
+        <line num="107" count="1" type="stmt"/>
+        <line num="144" count="14" type="stmt"/>
+        <line num="166" count="3" type="stmt"/>
+        <line num="171" count="320" type="cond" truecount="2" falsecount="0"/>
+      </file>
+    </package>
+    <package name="frontend.src.components.layout">
+      <metrics statements="17" coveredstatements="17" conditionals="39" coveredconditionals="39" methods="6" coveredmethods="6"/>
+      <file name="EventsSidebar.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\layout\EventsSidebar.tsx">
+        <metrics statements="5" coveredstatements="5" conditionals="33" coveredconditionals="33" methods="3" coveredmethods="3"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+        <line num="23" count="20" type="stmt"/>
+        <line num="46" count="51" type="stmt"/>
+        <line num="82" count="1" type="stmt"/>
+      </file>
+      <file name="Footer.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\layout\Footer.tsx">
+        <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="12" type="stmt"/>
+      </file>
+      <file name="Navbar.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\layout\Navbar.tsx">
+        <metrics statements="3" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="23" type="stmt"/>
+      </file>
+      <file name="ThemeToggle.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\layout\ThemeToggle.tsx">
+        <metrics statements="7" coveredstatements="7" conditionals="6" coveredconditionals="6" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="31" type="stmt"/>
+        <line num="6" count="28" type="stmt"/>
+        <line num="8" count="28" type="cond" truecount="2" falsecount="0"/>
+        <line num="12" count="28" type="stmt"/>
+      </file>
+    </package>
+    <package name="frontend.src.components.pages">
+      <metrics statements="29" coveredstatements="27" conditionals="24" coveredconditionals="24" methods="11" coveredmethods="9"/>
+      <file name="LandingPage.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\pages\LandingPage.tsx">
+        <metrics statements="29" coveredstatements="27" conditionals="24" coveredconditionals="24" methods="11" coveredmethods="9"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="45" type="stmt"/>
+        <line num="9" count="45" type="stmt"/>
+        <line num="10" count="45" type="stmt"/>
+        <line num="12" count="45" type="stmt"/>
+        <line num="14" count="20" type="stmt"/>
+        <line num="15" count="20" type="stmt"/>
+        <line num="17" count="20" type="stmt"/>
+        <line num="18" count="20" type="stmt"/>
+        <line num="19" count="23" type="stmt"/>
+        <line num="21" count="20" type="stmt"/>
+        <line num="25" count="45" type="stmt"/>
+        <line num="51" count="45" type="stmt"/>
+        <line num="73" count="45" type="stmt"/>
+        <line num="80" count="0" type="stmt"/>
+        <line num="88" count="180" type="stmt"/>
+        <line num="89" count="180" type="cond" truecount="2" falsecount="0"/>
+        <line num="90" count="180" type="cond" truecount="2" falsecount="0"/>
+        <line num="91" count="180" type="cond" truecount="2" falsecount="0"/>
+        <line num="93" count="180" type="stmt"/>
+        <line num="163" count="180" type="stmt"/>
+        <line num="195" count="135" type="stmt"/>
+        <line num="223" count="135" type="stmt"/>
+        <line num="226" count="0" type="stmt"/>
+        <line num="243" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="frontend.src.components.ui">
+      <metrics statements="3" coveredstatements="3" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+      <file name="LoaderOverlay.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\components\ui\LoaderOverlay.tsx">
+        <metrics statements="3" coveredstatements="3" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="7" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="8" count="30" type="stmt"/>
+      </file>
+    </package>
+    <package name="frontend.src.context">
+      <metrics statements="23" coveredstatements="23" conditionals="12" coveredconditionals="11" methods="7" coveredmethods="7"/>
+      <file name="ThemeContext.tsx" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\context\ThemeContext.tsx">
+        <metrics statements="23" coveredstatements="23" conditionals="12" coveredconditionals="11" methods="7" coveredmethods="7"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="28" type="stmt"/>
+        <line num="18" count="20" type="cond" truecount="1" falsecount="1"/>
+        <line num="19" count="20" type="stmt"/>
+        <line num="20" count="20" type="cond" truecount="4" falsecount="0"/>
+        <line num="21" count="19" type="cond" truecount="2" falsecount="0"/>
+        <line num="24" count="28" type="stmt"/>
+        <line num="26" count="28" type="stmt"/>
+        <line num="27" count="28" type="stmt"/>
+        <line num="28" count="28" type="stmt"/>
+        <line num="29" count="28" type="stmt"/>
+        <line num="32" count="28" type="stmt"/>
+        <line num="33" count="28" type="stmt"/>
+        <line num="35" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="41" count="28" type="stmt"/>
+        <line num="44" count="1" type="stmt"/>
+        <line num="45" count="31" type="stmt"/>
+        <line num="46" count="30" type="cond" truecount="2" falsecount="0"/>
+        <line num="47" count="2" type="stmt"/>
+        <line num="49" count="28" type="stmt"/>
+      </file>
+    </package>
+    <package name="frontend.src.utils">
+      <metrics statements="38" coveredstatements="37" conditionals="18" coveredconditionals="18" methods="8" coveredmethods="7"/>
+      <file name="api.ts" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\utils\api.ts">
+        <metrics statements="9" coveredstatements="9" conditionals="5" coveredconditionals="5" methods="2" coveredmethods="2"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="10" count="6" type="stmt"/>
+        <line num="11" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="16" count="6" type="stmt"/>
+        <line num="17" count="6" type="stmt"/>
+        <line num="19" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="20" count="2" type="stmt"/>
+        <line num="23" count="6" type="stmt"/>
+      </file>
+      <file name="api_quiz.ts" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\utils\api_quiz.ts">
+        <metrics statements="9" coveredstatements="9" conditionals="5" coveredconditionals="5" methods="2" coveredmethods="2"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="10" count="6" type="stmt"/>
+        <line num="11" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="16" count="6" type="stmt"/>
+        <line num="17" count="6" type="stmt"/>
+        <line num="19" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="20" count="2" type="stmt"/>
+        <line num="23" count="6" type="stmt"/>
+      </file>
+      <file name="handleUnauthorized.ts" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\utils\handleUnauthorized.ts">
+        <metrics statements="6" coveredstatements="6" conditionals="6" coveredconditionals="6" methods="1" coveredmethods="1"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="14" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="15" count="2" type="cond" truecount="4" falsecount="0"/>
+        <line num="16" count="2" type="stmt"/>
+        <line num="17" count="2" type="stmt"/>
+        <line num="20" count="1" type="stmt"/>
+      </file>
+      <file name="logout.ts" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\utils\logout.ts">
+        <metrics statements="10" coveredstatements="10" conditionals="2" coveredconditionals="2" methods="1" coveredmethods="1"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="4" count="3" type="stmt"/>
+        <line num="5" count="3" type="stmt"/>
+        <line num="11" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="13" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+      </file>
+      <file name="navigate.ts" path="C:\Users\mirth\codetests\OpenLingua\frontend\src\utils\navigate.ts">
+        <metrics statements="4" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="1"/>
+        <line num="1" count="3" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="6" count="3" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>

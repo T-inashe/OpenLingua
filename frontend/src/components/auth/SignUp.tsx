@@ -3,7 +3,7 @@ import config from "../../config";
 import { Link, useNavigate } from "react-router-dom";
 import ProfileForm from "./ProfileForm";
 import '../../css/LandingPage.css';
-
+import { navigateTo } from "../../utils/navigate";
 interface FormData {
   email: string;
   password: string;
@@ -87,21 +87,23 @@ const SignUp: React.FC = () => {
     );
   }
 
-  const handleGoogleLogin = (): void => {
-    try {
-      window.location.href = `${config.BACKEND_URL}/api/auth/google`;
-    } catch (err) {
-      console.error('Google login error:', err);
-    }
-  };
-
-  const handleMicrosoftLogin = (): void => {
-    try {
-      window.location.href = `${config.BACKEND_URL}/api/auth/microsoft`;
-    } catch (err) {
-      console.error('Microsoft login error:', err);
-    }
-  };
+    const handleGoogleLogin = (): void => {
+      try {
+       // window.location.href = `${config.BACKEND_URL}/api/auth/google`;
+        navigateTo(`${config.BACKEND_URL}/api/auth/google`);
+      } catch (err) {
+        console.error('Google login error:', err);
+      }
+    };
+  
+    const handleMicrosoftLogin = (): void => {
+      try {
+        //window.location.href = `${config.BACKEND_URL}/api/auth/microsoft`;
+         navigateTo(`${config.BACKEND_URL}/api/auth/microsoft`);
+      } catch (err) {
+        console.error('Microsoft login error:', err);
+      }
+    };
 
 
   const handleSubmit =  () => {

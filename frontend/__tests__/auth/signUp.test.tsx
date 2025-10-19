@@ -6,7 +6,7 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import "@testing-library/jest-dom";
-import SignUp from "../../src/components/auth/signUp";
+import SignUp from "../../src/components/auth/SignUp";
 import config from "../../src/config";
 import * as navigateModule from "../../src/utils/navigate";
 

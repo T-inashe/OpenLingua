@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
-import CommunityDashboard from '../../src/components/community/communityDashboard';
+import CommunityDashboard from '../../src/components/community/CommunityDashboard';
 
 // Mock the navigation hook
 const mockNavigate = jest.fn();
@@ -28,7 +28,7 @@ import { logoutRequest } from '../../src/utils/logout';
 const mockLogoutRequest = jest.mocked(logoutRequest);
 
 // Mock components
-jest.mock('../../src/components/ui/Loader', () => {
+jest.mock('../../src/components/ui/LoaderOverlay', () => {
   return function MockLoaderOverlay({ message }: { message?: string }) {
     return <div data-testid="loader-overlay">{message || 'Loading...'}</div>;
   };
