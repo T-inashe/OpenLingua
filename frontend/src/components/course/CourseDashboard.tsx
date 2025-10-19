@@ -239,9 +239,12 @@ const loadQuizzes = async () => {
   try {
     setLoadingQuizzes(true);
     const data = await getCourseQuizzes(id);
-    setQuizzes(data.filter(q => q.isActive)); // Only show active quizzes to students
+    // Handle both array and object with quizzes property
+    const quizArray = Array.isArray(data) ? data : ((data as any).quizzes || []);
+    setQuizzes(quizArray.filter((q: Quiz) => q.isActive)); // Only show active quizzes to students
   } catch (error: any) {
     console.error("Error loading quizzes:", error);
+    setQuizzes([]); // Set empty array on error
   } finally {
     setLoadingQuizzes(false);
   }

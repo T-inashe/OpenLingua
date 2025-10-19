@@ -6,6 +6,8 @@ const validateCourseOwnership = async (req, res, next) => {
     const { courseId } = req.params;
     const userId = req.user.id;
 
+    console.log('🔍 Validating course ownership:', { courseId, userId });
+
     if (!courseId) {
       return res.status(400).json({ error: "Course ID is required" });
     }
@@ -17,6 +19,8 @@ const validateCourseOwnership = async (req, res, next) => {
       }
     });
 
+    console.log('📚 Course found:', course ? 'YES' : 'NO');
+
     if (!course) {
       return res.status(403).json({ 
         error: "Unauthorized: You don't own this course" 
@@ -26,8 +30,8 @@ const validateCourseOwnership = async (req, res, next) => {
     req.course = course;
     next();
   } catch (error) {
-    console.error('Course ownership validation error:', error);
-    res.status(500).json({ error: "Authorization check failed" });
+    console.error('❌ Course ownership validation error:', error);
+    res.status(500).json({ error: "Authorization check failed", details: error.message });
   }
 };
 
