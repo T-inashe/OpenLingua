@@ -8,6 +8,8 @@ import CourseDashboard from './components/course/CourseDashboard';
 import Dashboard from './components/dashboard';
 import CourseCreation from './components/course/CourseCreation';
 import CommunityDashboard from './components/community/CommunityDashboard';
+import QuizTaker from './components/quiz/QuizTaker';
+import QuizResults from './components/quiz/QuizResults';
 import { ThemeProvider } from './context/ThemeContext';
 import { ProAlertProvider } from './context/ProAlertContext';
 
@@ -24,6 +26,8 @@ function App() {
             <Route path="/community" element={<CommunityDashboard />}/>
             <Route path="/create/:id" element={<CourseCreation/>} />
             <Route path="/course/:id" element={<CourseDashboard />} />
+            <Route path="/courses/:courseId/quiz/:quizId/take" element={<QuizTaker courseId="" quizId="" />} />
+            <Route path="/courses/:courseId/quiz/:quizId/results" element={<QuizResults />} />
             <Route path="/dashboard" element={<Dashboard/>} />
             <Route path="/" element={<LandingPage/>} />
           </Routes>

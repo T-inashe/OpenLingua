@@ -16,7 +16,8 @@ import {
   Target,
   Globe,
   ArrowLeft,
-  LogOut
+  LogOut,
+  Edit
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
@@ -25,6 +26,9 @@ import { logoutRequest } from "../../utils/logout";
 import ThemeToggle from "../layout/ThemeToggle";
 import { useProAlert } from "../../context/ProAlertContext";
 import { handleUnauthorized } from "../../utils/handleUnauthorized";
+import QuizEditor from "../quiz/QuizEditor";
+import { getCourseQuizzes, deleteQuiz } from "../../services/quizApi";
+import type { Quiz } from "../../services/quizApi";
 interface QuizOption {
   id: number;
   text: string;
@@ -101,6 +105,12 @@ const CourseCreation = () => {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const pendingNavigation = useRef<(() => void | Promise<void>) | null>(null);
+
+  // Quiz management state
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(false);
+  const [showQuizEditor, setShowQuizEditor] = useState(false);
+  const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
 
   // Fetch course data if in edit mode
   useEffect(() => {
@@ -493,7 +503,8 @@ const CourseCreation = () => {
     { id: 1, title: "Course Info", icon: BookOpen },
     { id: 2, title: "Structure", icon: Target },
     { id: 3, title: "Content", icon: FileText },
-    { id: 4, title: "Settings", icon: Settings }
+    { id: 4, title: "Settings", icon: Settings },
+    { id: 5, title: "Quizzes", icon: BookOpen }
   ];
 
 
@@ -796,6 +807,48 @@ updateSelectedLesson(field, file); // store filename, or replace with upload log
 };
 fileInputRef.current.click();
 };
+
+  // Quiz management functions
+  const loadQuizzes = async () => {
+    if (!editCourseId) return;
+    
+    try {
+      setLoadingQuizzes(true);
+      const data = await getCourseQuizzes(editCourseId);
+      setQuizzes(data);
+    } catch (error: any) {
+      proAlert.error(error.message || 'Failed to load quizzes');
+    } finally {
+      setLoadingQuizzes(false);
+    }
+  };
+
+  const handleDeleteQuiz = async (quizId: string) => {
+    if (!editCourseId) return;
+    if (!confirm('Are you sure you want to delete this quiz?')) return;
+    
+    try {
+      await deleteQuiz(editCourseId, quizId);
+      proAlert.success('Quiz deleted successfully');
+      loadQuizzes();
+    } catch (error: any) {
+      proAlert.error(error.message || 'Failed to delete quiz');
+    }
+  };
+
+  const handleQuizSaved = () => {
+    setShowQuizEditor(false);
+    setEditingQuizId(null);
+    loadQuizzes();
+  };
+
+  // Load quizzes when entering quiz step
+  useEffect(() => {
+    if (activeStep === 5 && editCourseId) {
+      loadQuizzes();
+    }
+  }, [activeStep, editCourseId]);
+
 
   const renderStepContent = () => {
     switch (activeStep) {
@@ -1368,6 +1421,117 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
           </div>
         );
 
+      case 5:
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-white font-semibold text-xl">Course Quizzes</h3>
+                <p className="text-gray-400 text-sm mt-1">Create quizzes to test your students' knowledge</p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingQuizId(null);
+                  setShowQuizEditor(true);
+                }}
+                className="flex items-center space-x-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
+              >
+                <Plus size={16} />
+                <span>Create Quiz</span>
+              </button>
+            </div>
+
+            {!editCourseId ? (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6 text-center">
+                <p className="text-yellow-300">Please save your course first before adding quizzes</p>
+              </div>
+            ) : loadingQuizzes ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+              </div>
+            ) : quizzes.length === 0 ? (
+              <div className="bg-white/5 backdrop-blur-lg rounded-lg border-2 border-cyan-500/30 p-12 text-center">
+                <BookOpen size={48} className="text-cyan-400 mx-auto mb-4" />
+                <h4 className="text-white font-semibold text-lg mb-2">No Quizzes Yet</h4>
+                <p className="text-gray-400 mb-6">Create your first quiz to assess student learning</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {quizzes.map((quiz) => (
+                  <div
+                    key={quiz.id}
+                    className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-lg p-6 hover:border-cyan-500/30 transition-all duration-200"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-white font-semibold text-lg">{quiz.title}</h4>
+                          {!quiz.isActive && (
+                            <span className="px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400">
+                              Inactive
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-400 text-sm mb-4">{quiz.description}</p>
+                        <div className="flex items-center gap-6 text-sm text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <FileText size={14} />
+                            {quiz.questionCount || 0} questions
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock size={14} />
+                            {quiz.timeLimit || 'No'} min limit
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Target size={14} />
+                            {quiz.passingScore}% to pass
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingQuizId(quiz.id);
+                            setShowQuizEditor(true);
+                          }}
+                          className="p-2 text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-all"
+                          title="Edit quiz"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQuiz(quiz.id)}
+                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                          title="Delete quiz"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Quiz Editor Modal */}
+            {showQuizEditor && editCourseId && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+                <div className="bg-slate-900 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                  <QuizEditor
+                    courseId={editCourseId}
+                    quizId={editingQuizId || undefined}
+                    onSave={handleQuizSaved}
+                    onCancel={() => {
+                      setShowQuizEditor(false);
+                      setEditingQuizId(null);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
       default:
         return null;
     }
@@ -1454,13 +1618,13 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
           
           <div className="flex space-x-3">
           
-            {activeStep === 4 ? (
+            {activeStep === 5 ? (
               <button onClick={createCourse} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105">
                 {isEditMode ? 'Update Course' : 'Publish Course'}
               </button>
             ) : (
               <button
-                onClick={() => setActiveStep(Math.min(4, activeStep + 1))}
+                onClick={() => setActiveStep(Math.min(5, activeStep + 1))}
                 className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
               >
                 Next Step

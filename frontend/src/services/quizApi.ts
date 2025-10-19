@@ -28,6 +28,8 @@ export interface Quiz {
   courseId: string;
   title: string;
   description?: string;
+  category?: string;
+  difficulty?: string;
   questions?: QuizQuestion[];
   questionCount?: number;
   timeLimit?: number;
@@ -43,6 +45,7 @@ export interface QuizAttempt {
   quizId: string;
   userId: string;
   score: number;
+  percentage?: number;
   answers: Record<string, string>;
   timeSpent: number;
   passed: boolean;

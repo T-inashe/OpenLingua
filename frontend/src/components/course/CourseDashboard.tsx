@@ -4,12 +4,14 @@ import config from "../../config";
 
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar, LogOut } from "lucide-react";
+import { Search, BookOpen, SendHorizonal, MessageSquare, Bell, Loader2, Star, Calendar, LogOut, Clock, Target } from "lucide-react";
 import LoaderOverlay from "../ui/LoaderOverlay";
 import ThemeToggle from "../layout/ThemeToggle";
 import { useProAlert } from "../../context/ProAlertContext";
 import { handleUnauthorized } from "../../utils/handleUnauthorized";
 import { logoutRequest } from "../../utils/logout";
+import { getCourseQuizzes } from "../../services/quizApi";
+import type { Quiz } from "../../services/quizApi";
 
 type Review = {
 user: User;
@@ -117,6 +119,10 @@ const [quizResponses, setQuizResponses] = useState<Record<string, Record<string,
 }>>>({});
 const progressLoadedRef = useRef(false); // Track if we've loaded progress from storage
 const [isSavingProgress, setIsSavingProgress] = useState(false); // Track saving state
+
+  // Quiz state
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(false);
 
 const resolveLessonContent = (content: string | null): string | null => {
   if (!content) return null;
@@ -226,12 +232,28 @@ const refreshReviews = async () => {
   }
 };
 
+// Load quizzes
+const loadQuizzes = async () => {
+  if (!id) return;
+  
+  try {
+    setLoadingQuizzes(true);
+    const data = await getCourseQuizzes(id);
+    setQuizzes(data.filter(q => q.isActive)); // Only show active quizzes to students
+  } catch (error: any) {
+    console.error("Error loading quizzes:", error);
+  } finally {
+    setLoadingQuizzes(false);
+  }
+};
+
 useEffect(() => {
   const load = async () => {
     try {
       setPageLoading(true);
       // Single optimized API call instead of 4 separate calls
       await getCourses();
+      await loadQuizzes();
     } finally {
       setPageLoading(false);
     }
@@ -961,6 +983,65 @@ Welcome To {course?.title}
   </div>
 ))}
 </div>
+</section>
+
+
+{/* Quizzes Section */}
+<section className={`bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 transition-all duration-1000 delay-700 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
+  <h2 className="text-white font-semibold text-xl mb-4 flex items-center gap-2">
+    <BookOpen size={24} className="text-cyan-400" />
+    Course Quizzes
+  </h2>
+  
+  {loadingQuizzes ? (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 className="animate-spin text-cyan-400" size={32} />
+    </div>
+  ) : quizzes.length === 0 ? (
+    <div className="text-center py-8 text-gray-400">
+      <BookOpen size={48} className="mx-auto mb-3 opacity-50" />
+      <p>No quizzes available yet</p>
+    </div>
+  ) : (
+    <div className="grid gap-4">
+      {quizzes.map((quiz) => (
+        <div
+          key={quiz.id}
+          className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-cyan-500/30 transition-all duration-200"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <h3 className="text-white font-semibold text-lg mb-1">{quiz.title}</h3>
+              <p className="text-gray-400 text-sm">{quiz.description}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
+            <span className="flex items-center gap-1">
+              <BookOpen size={14} />
+              {quiz.questionCount || 0} questions
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock size={14} />
+              {quiz.timeLimit ? `${quiz.timeLimit} min` : 'No limit'}
+            </span>
+            <span className="flex items-center gap-1">
+              <Target size={14} />
+              {quiz.passingScore}% to pass
+            </span>
+          </div>
+          
+          <button
+            onClick={() => navigate(`/courses/${id}/quiz/${quiz.id}/take`)}
+            className="w-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105 flex items-center justify-center gap-2"
+          >
+            <BookOpen size={18} />
+            Take Quiz
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
 </section>
 
 
