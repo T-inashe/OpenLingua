@@ -260,17 +260,17 @@ const CommunityDashboard = () => {
     }));
   };
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    const success = await logoutRequest();
-    setIsLoggingOut(false);
+  // const handleLogout = async () => {
+  //   setIsLoggingOut(true);
+  //   const success = await logoutRequest();
+  //   setIsLoggingOut(false);
 
-    if (success) {
-      navigate('/signIn');
-    } else {
-      proAlert.error('Unable to log out. Please try again.');
-    }
-  };
+  //   if (success) {
+  //     navigate('/signIn');
+  //   } else {
+  //     proAlert.error('Unable to log out. Please try again.');
+  //   }
+  // };
 
   // Utility function to find common courses
   const getCommonCourses = (member: User) => {

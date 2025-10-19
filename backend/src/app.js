@@ -10,7 +10,6 @@ const path = require("path");
 const fs = require("fs");
 const { Pool } = require("pg");
 const authRoutes = require('./routes/auth');
-const passport = require('./config/passport');
 const courseRoutes = require("./routes/courseRoutes");
 const forumRoutes = require("./routes/forumRoutes");
 const vocabRoutes = require("./routes/vocabRoutes");
