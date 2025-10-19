@@ -40,11 +40,6 @@ const prismaClientSingleton = () => {
     datasources: effectiveDbUrl
       ? { db: { url: effectiveDbUrl } }
       : undefined,
-    // Keep Prisma's pool tiny when using PgBouncer (Supabase pooler)
-    pool: {
-      max: 1,        // default is 5; 1 is recommended with PgBouncer
-      timeout: 30,   // seconds; default 10
-    },
   });
 };
 
@@ -90,3 +85,5 @@ process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
 
 module.exports = prisma;
+// Also expose a named export for test mocks that import `{ prisma }`
+module.exports.prisma = prisma;

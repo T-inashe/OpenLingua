@@ -16,6 +16,10 @@ class QuizFallbackManager {
     this.healthCheckInterval = setInterval(() => {
       this.checkApiHealth();
     }, 5 * 60 * 1000);
+    // Allow process/tests to exit even if the interval is still scheduled
+    if (this.healthCheckInterval && typeof this.healthCheckInterval.unref === 'function') {
+      this.healthCheckInterval.unref();
+    }
   }
 
   // Check if external API is available

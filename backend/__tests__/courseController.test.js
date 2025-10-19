@@ -21,6 +21,30 @@ describe('courseController', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     global.fetch = undefined;
+    // Ensure optional prisma methods exist and fully reset implementations between tests
+    prisma.course.findFirst = prisma.course.findFirst || jest.fn();
+    prisma.course.update = prisma.course.update || jest.fn();
+    prisma.course.delete = prisma.course.delete || jest.fn();
+    prisma.courseEnrollment.update = prisma.courseEnrollment.update || jest.fn();
+
+    const fns = [
+      prisma.course.create,
+      prisma.course.findMany,
+      prisma.course.findUnique,
+      prisma.course.findFirst,
+      prisma.course.update,
+      prisma.course.delete,
+      prisma.courseEnrollment.create,
+      prisma.courseEnrollment.findMany,
+      prisma.courseEnrollment.findFirst,
+      prisma.courseEnrollment.update,
+      prisma.userCourse.deleteMany,
+      prisma.forumPost.findMany,
+      prisma.courseReview.findMany,
+      prisma.courseReview.findFirst,
+      prisma.courseReview.create,
+    ];
+    fns.forEach((fn) => fn && fn.mockReset && fn.mockReset());
   });
 
   describe('translateText', () => {
@@ -60,12 +84,37 @@ describe('courseController', () => {
   });
 
   describe('createCourse', () => {
+    test('400 when missing title or description', async () => {
+      const req = { body: { description: 'Desc only' } };
+      const res = mockRes();
+      await controller.createCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Title and description are required' });
+    });
+
+    test('409 when a course with same title exists', async () => {
+      const req = { body: {
+        title: 'Dup', description: 'D', language: 'en', level: 'A1', category: 'cat', hours: 1,
+        public: false, community: false, discussions: false, info: '', instructorId: 'u1'
+      } };
+      const res = mockRes();
+      prisma.course.findFirst.mockResolvedValue({ title: 'Dup', instructor: { name: 'Owner' } });
+
+      await controller.createCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'A course with this title already exists',
+        existingCourse: { title: 'Dup', createdBy: 'Owner' }
+      });
+    });
+
     test('creates course then returns 201', async () => {
       const req = { body: {
         title: 'Course', description: 'Desc', language: 'en', level: 'A1', category: 'cat', hours: 5,
         public: true, community: true, discussions: true, info: 'i', instructorId: 'u1'
       } };
       const res = mockRes();
+      prisma.course.findFirst.mockResolvedValue(null);
       prisma.course.create.mockResolvedValue({ id: 'c1' });
 
       await controller.createCourse(req, res);
@@ -73,6 +122,21 @@ describe('courseController', () => {
       expect(prisma.course.create).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith({ message: 'Course created successfully', course: { id: 'c1' } });
+    });
+
+    test('handles prisma error during create', async () => {
+      const req = { body: {
+        title: 'Course', description: 'Desc', language: 'en', level: 'A1', category: 'cat', hours: 5,
+        public: true, community: true, discussions: true, info: 'i', instructorId: 'u1'
+      } };
+      const res = mockRes();
+      prisma.course.findFirst.mockResolvedValue(null);
+      prisma.course.create.mockRejectedValue(new Error('db'));
+
+      await controller.createCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+      const payload = res.json.mock.calls[0][0];
+      expect(payload).toHaveProperty('error');
     });
   });
 
@@ -121,9 +185,18 @@ describe('courseController', () => {
   });
 
   describe('join/leave course', () => {
+    test('joinCourse returns 400 when already enrolled', async () => {
+      const req = { body: { courseId: 'c1', userId: 'u1' } };
+      const res = mockRes();
+      prisma.courseEnrollment.findFirst.mockResolvedValue({ id: 'en1' });
+      await controller.joinCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "You are already enrolled in this course", enrollmentId: 'en1' });
+    });
     test('joinCourse creates enrollment', async () => {
       const req = { body: { courseId: 'c1', userId: 'u1' } };
       const res = mockRes();
+      prisma.courseEnrollment.findFirst.mockResolvedValue(null);
       prisma.courseEnrollment.create.mockResolvedValue({});
       await controller.joinCourse(req, res);
       expect(prisma.courseEnrollment.create).toHaveBeenCalledWith({ data: { userId: 'u1', courseId: 'c1', progress: '0%' } });
@@ -141,6 +214,7 @@ describe('courseController', () => {
     test('joinCourse handles error', async () => {
       const req = { body: { courseId: 'c1', userId: 'u1' } };
       const res = mockRes();
+      prisma.courseEnrollment.findFirst.mockResolvedValue(null);
       prisma.courseEnrollment.create.mockRejectedValue(new Error('db'));
       await controller.joinCourse(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
@@ -153,6 +227,147 @@ describe('courseController', () => {
       await controller.leaveCourse(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ error: 'Could not leave course' });
+    });
+  });
+
+  describe('updateCourse', () => {
+    test('404 when course not found', async () => {
+      const req = { params: { courseId: 'c1' }, user: { id: 'u1' }, body: {} };
+      const res = mockRes();
+      prisma.course.findUnique.mockResolvedValue(null);
+      await controller.updateCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Course not found' });
+    });
+
+    test('403 when user not owner', async () => {
+      const req = { params: { courseId: 'c1' }, user: { id: 'other' }, body: {} };
+      const res = mockRes();
+      prisma.course.findUnique.mockResolvedValue({ id: 'c1', instructorId: 'owner', title: 'T' });
+      await controller.updateCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Not authorized to update this course' });
+    });
+
+    test('409 when new title collides', async () => {
+      const req = { params: { courseId: 'c1' }, user: { id: 'owner' }, body: { title: 'New' } };
+      const res = mockRes();
+      prisma.course.findUnique.mockResolvedValue({ id: 'c1', instructorId: 'owner', title: 'Old' });
+      prisma.course.findFirst.mockResolvedValue({ title: 'New', instructor: { name: 'Someone' } });
+      await controller.updateCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'A course with this title already exists',
+        existingCourse: { title: 'New', createdBy: 'Someone' }
+      });
+    });
+
+    test('updates course successfully when authorized', async () => {
+      const req = { params: { courseId: 'c1' }, user: { id: 'owner' }, body: { description: 'D2' } };
+      const res = mockRes();
+      prisma.course.findUnique.mockResolvedValue({ id: 'c1', instructorId: 'owner', title: 'T', description: 'D1' });
+      prisma.course.update.mockResolvedValue({ id: 'c1', description: 'D2' });
+
+      await controller.updateCourse(req, res);
+      expect(prisma.course.update).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ course: { id: 'c1', description: 'D2' } });
+    });
+
+    test('handles error during update', async () => {
+      const req = { params: { courseId: 'c1' }, user: { id: 'owner' }, body: {} };
+      const res = mockRes();
+      prisma.course.findUnique.mockResolvedValue({ id: 'c1', instructorId: 'owner', title: 'T' });
+      prisma.course.update.mockRejectedValue(new Error('db'));
+      await controller.updateCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Error updating course' });
+    });
+  });
+
+  describe('deleteCourse', () => {
+    test('404 when course not found', async () => {
+      const req = { params: { courseId: 'c1' }, user: { id: 'u1' } };
+      const res = mockRes();
+      prisma.course.findUnique.mockResolvedValue(null);
+      await controller.deleteCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Course not found' });
+    });
+
+    test('403 when user not owner', async () => {
+      const req = { params: { courseId: 'c1' }, user: { id: 'other' } };
+      const res = mockRes();
+      prisma.course.findUnique.mockResolvedValue({ id: 'c1', instructorId: 'owner' });
+      await controller.deleteCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Not authorized to delete this course' });
+    });
+
+    test('deletes course successfully', async () => {
+      const req = { params: { courseId: 'c1' }, user: { id: 'owner' } };
+      const res = mockRes();
+      prisma.course.findUnique.mockResolvedValue({ id: 'c1', instructorId: 'owner' });
+      prisma.course.delete.mockResolvedValue({});
+      await controller.deleteCourse(req, res);
+      expect(prisma.course.delete).toHaveBeenCalledWith({ where: { id: 'c1' } });
+      expect(res.json).toHaveBeenCalledWith({ message: 'Course deleted successfully' });
+    });
+
+    test('handles error during delete', async () => {
+      const req = { params: { courseId: 'c1' }, user: { id: 'owner' } };
+      const res = mockRes();
+      prisma.course.findUnique.mockResolvedValue({ id: 'c1', instructorId: 'owner' });
+      prisma.course.delete.mockRejectedValue(new Error('db'));
+      await controller.deleteCourse(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Error deleting course' });
+    });
+  });
+
+  describe('updateCourseProgress', () => {
+    test('401 when not authenticated', async () => {
+      const req = { params: { courseId: 'c1' }, body: { progress: 10 }, user: undefined };
+      const res = mockRes();
+      await controller.updateCourseProgress(req, res);
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Not authenticated' });
+    });
+
+    test('400 when invalid progress value', async () => {
+      const req = { params: { courseId: 'c1' }, body: { progress: -5 }, user: { id: 'u1' } };
+      const res = mockRes();
+      await controller.updateCourseProgress(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid progress value. Must be between 0 and 100.' });
+    });
+
+    test('404 when not enrolled', async () => {
+      const req = { params: { courseId: 'c1' }, body: { progress: 50 }, user: { id: 'u1' } };
+      const res = mockRes();
+      prisma.courseEnrollment.findFirst.mockResolvedValue(null);
+      await controller.updateCourseProgress(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: 'User not enrolled in this course' });
+    });
+
+    test('updates progress successfully', async () => {
+      const req = { params: { courseId: 'c1' }, body: { progress: 50 }, user: { id: 'u1' } };
+      const res = mockRes();
+      prisma.courseEnrollment.findFirst.mockResolvedValue({ id: 'en1' });
+      prisma.courseEnrollment.update.mockResolvedValue({ id: 'en1', progress: '50%' });
+      await controller.updateCourseProgress(req, res);
+      expect(prisma.courseEnrollment.update).toHaveBeenCalledWith({ where: { id: 'en1' }, data: { progress: '50%' } });
+      expect(res.json).toHaveBeenCalledWith({ progress: '50%', message: 'Progress updated successfully' });
+    });
+
+    test('handles error during progress update', async () => {
+      const req = { params: { courseId: 'c1' }, body: { progress: 50 }, user: { id: 'u1' } };
+      const res = mockRes();
+      prisma.courseEnrollment.findFirst.mockResolvedValue({ id: 'en1' });
+      prisma.courseEnrollment.update.mockRejectedValue(new Error('db'));
+      await controller.updateCourseProgress(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Error updating progress' });
     });
   });
 

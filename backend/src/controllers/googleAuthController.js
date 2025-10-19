@@ -1,33 +1,36 @@
-const prisma = require('../lib/prisma');
+const passport = require('../config/passport');
+const { generateTokens } = require('../utils/jwt');
+const { setAuthCookies } = require('../utils/cookies');
 
-exports.googleCallback = async (req, res) => {
-  try {
-    console.log('Google callback - User:', req.user);
-    console.log('Google callback - Session ID:', req.sessionID);
-    
-    if (!req.user) {
-      console.error('No user in request after Google auth');
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/signin?error=auth_failed`);
-    }
-
-    // Ensure session is saved before redirect
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/signin?error=session_failed`);
-      }
-      
-      console.log('✅ Session saved successfully');
-      console.log('Session data:', req.session);
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`);
-    });
-  } catch (error) {
-    console.error('Google callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/signin?error=server_error`);
-  }
-};
-
+// Initiate Google OAuth flow
 exports.googleAuth = (req, res, next) => {
   console.log('Initiating Google OAuth...');
-  next();
+  return passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+};
+
+// Handle Google OAuth callback using passport custom callback pattern
+exports.googleCallback = (req, res, next) => {
+  // Read env at call-time so tests can override
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const SIGNIN_PATH = process.env.FRONTEND_SIGNIN_PATH || '/signin';
+  const DASHBOARD_PATH = process.env.FRONTEND_DASHBOARD_PATH || '/dashboard';
+
+  return passport.authenticate('google', { session: false }, async (err, user, info) => {
+    if (err) {
+      return res.redirect(`${FRONTEND_URL}${SIGNIN_PATH}?error=oauth_error`);
+    }
+    if (!user) {
+      console.error('No user in request after Google auth');
+      return res.redirect(`${FRONTEND_URL}${SIGNIN_PATH}?error=oauth_failed`);
+    }
+
+    try {
+      const { accessToken, refreshToken } = generateTokens({ userId: user.id, email: user.email });
+      setAuthCookies(res, accessToken, refreshToken);
+      return res.redirect(`${FRONTEND_URL}${DASHBOARD_PATH}`);
+    } catch (e) {
+      console.error('Google callback error:', e);
+      return res.redirect(`${FRONTEND_URL}${SIGNIN_PATH}?error=server_error`);
+    }
+  })(req, res, next);
 };
