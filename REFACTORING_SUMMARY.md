@@ -112,3 +112,16 @@ The following old files can now be safely deleted:
 - The `dashboard.tsx` file was kept in the components root as it wasn't specified in your structure
 - All CSS imports have been updated to use correct relative paths
 - No functionality has been changed, only file organization and imports
+
+---
+
+## 2025-10-19: Centralized Quiz Types
+
+- Consolidated all quiz-related TypeScript types into `frontend/src/types/quiz.ts`.
+- Updated `frontend/src/services/quizApi.ts` to import and re-export these types for convenience.
+- Refactored quiz components to use the centralized types:
+	- `frontend/src/components/quiz/QuizEditor.tsx`
+	- `frontend/src/components/quiz/QuizCreator.tsx`
+	- `frontend/src/components/quiz/QuizManager.tsx`
+	- `frontend/src/components/quiz/QuizTaker.tsx`
+- This eliminates mismatched `QuizQuestion` unions across modules and fixes prior state setter type errors.

@@ -16,7 +16,10 @@ import {
   Zap
 } from 'lucide-react';
 import quizService from '../../services/quizService';
-import type { Quiz, QuizTemplate } from '../../types/quiz';
+import { getCourseQuizzes as getCourseQuizzesApi, deleteQuiz as deleteQuizApi } from '../../services/quizApi';
+// Use the API Quiz type to match payload shape
+import type { Quiz as ApiQuiz } from '../../types/quiz';
+import type { QuizTemplate } from '../../types/quiz';
 
 // Define component props interface
 interface QuizManagerProps {
@@ -27,7 +30,7 @@ interface QuizManagerProps {
 // Define API response interfaces
 interface QuizResponse {
   mode: 'online' | 'offline';
-  data: Quiz[];
+  data: ApiQuiz[];
 }
 
 interface TemplateResponse {
@@ -36,12 +39,12 @@ interface TemplateResponse {
 }
 
 const QuizManager = ({ courseId, isInstructor = false }: QuizManagerProps) => {
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [quizzes, setQuizzes] = useState<ApiQuiz[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [apiStatus, setApiStatus] = useState<'unknown' | 'online' | 'offline' | 'error'>('unknown');
   const [_showCreateModal, setShowCreateModal] = useState<boolean>(false);
-  const [_selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+  const [_selectedQuiz, setSelectedQuiz] = useState<ApiQuiz | null>(null);
   const [templates, setTemplates] = useState<QuizTemplate[]>([]);
   const [showTemplates, setShowTemplates] = useState<boolean>(false);
 
@@ -56,7 +59,7 @@ const QuizManager = ({ courseId, isInstructor = false }: QuizManagerProps) => {
   const loadQuizzes = async (): Promise<void> => {
     try {
       setLoading(true);
-      const result = await quizService.getCourseQuizzes(courseId);
+  const result = await getCourseQuizzesApi(courseId);
       
       // Handle different response formats
       if (result && typeof result === 'object' && 'mode' in result && 'data' in result) {
@@ -99,7 +102,7 @@ const QuizManager = ({ courseId, isInstructor = false }: QuizManagerProps) => {
     }
 
     try {
-      await quizService.deleteQuiz(courseId, quizId);
+  await deleteQuizApi(courseId, quizId);
       await loadQuizzes();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -178,7 +181,7 @@ const QuizManager = ({ courseId, isInstructor = false }: QuizManagerProps) => {
   );
 
   // Quiz Card Component
-  const QuizCard = ({ quiz }: { quiz: Quiz }) => (
+  const QuizCard = ({ quiz }: { quiz: ApiQuiz }) => (
     <div className="bg-white/5 border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-all duration-200">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
@@ -389,8 +392,14 @@ const QuizManager = ({ courseId, isInstructor = false }: QuizManagerProps) => {
 
       {/* Templates Modal */}
       {showTemplates && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[85] p-4"
+          onClick={() => setShowTemplates(false)}
+        >
+          <div
+            className="bg-gray-900 rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 border-b border-white/10">
               <div className="flex justify-between items-center">
                 <h3 className="text-white text-xl font-bold">Quiz Templates</h3>

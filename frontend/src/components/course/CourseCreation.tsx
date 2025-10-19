@@ -354,9 +354,6 @@ const CourseCreation = () => {
       file: null,
       position: units.find((unit) => unit.id === unitId)?.lessons.length ?? 0,
     };
-
-    // Quizzes are managed at course level (Step 5), no lesson-level quizQuestions
-
     setUnits(units.map(unit => 
       unit.id === unitId 
         ? {
@@ -1221,8 +1218,17 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
 
             {/* Quiz Editor Modal */}
             {showQuizEditor && editCourseId && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
-                <div className="bg-slate-900 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div
+                className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
+                onClick={() => {
+                  setShowQuizEditor(false);
+                  setEditingQuizId(null);
+                }}
+              >
+                <div
+                  className="bg-slate-900 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <QuizEditor
                     courseId={editCourseId}
                     quizId={editingQuizId || undefined}
@@ -1258,7 +1264,6 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
               >
                 OpenLingua
               </button>
-             
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
@@ -1282,15 +1287,14 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
               const Icon = step.icon;
               const isActive = activeStep === step.id;
               const isCompleted = activeStep > step.id;
-              
               return (
                 <div key={step.id} className="flex items-center">
                   <button
                     onClick={() => setActiveStep(step.id)}
                     className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all duration-300 ${
-                      isActive 
-                        ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg' 
-                        : isCompleted 
+                      isActive
+                        ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg'
+                        : isCompleted
                           ? 'bg-green-500/20 text-green-300 border border-green-500/30'
                           : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
                     }`}
@@ -1301,7 +1305,7 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
                   {index < steps.length - 1 && (
                     <div className={`w-8 h-0.5 mx-2 transition-colors duration-300 ${
                       isCompleted ? 'bg-green-500' : 'bg-white/20'
-                    }`}></div>
+                    }`} />
                   )}
                 </div>
               );
@@ -1313,7 +1317,7 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
           {renderStepContent()}
         </div>
 
-        <div className={`flex items-center justify-between mt-8 pt-6 border-t border-white/10 transition-all duration-1000 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+        <div className={`flex items-center justify-between mt-8 pt-6 border-t border-white/10 transition-all duration-1000 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'} ${(showQuizEditor || showLeaveModal) ? 'pointer-events-none' : ''}`}>
           <button
             onClick={() => setActiveStep(Math.max(1, activeStep - 1))}
             disabled={activeStep === 1}
@@ -1321,11 +1325,13 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
           >
             <span>Previous</span>
           </button>
-          
+
           <div className="flex space-x-3">
-          
             {activeStep === 5 ? (
-              <button onClick={createCourse} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105">
+              <button
+                onClick={createCourse}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
+              >
                 {isEditMode ? 'Update Course' : 'Publish Course'}
               </button>
             ) : (
@@ -1337,8 +1343,8 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
               </button>
             )}
           </div>
+        </div>
       </div>
-    </div>
 
       {showLeaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
@@ -1364,7 +1370,7 @@ className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-wh
           </div>
         </div>
       )}
-  </div>
+    </div>
   );
 };
 

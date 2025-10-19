@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useProAlert } from '../../context/ProAlertContext';
 import { getQuiz, submitQuizAttempt } from '../../services/quizApi';
-import type { Quiz as QuizApiType, QuizQuestion as QuizQuestionType } from '../../services/quizApi';
+import type { Quiz as QuizApiType, QuizQuestion as QuizQuestionType } from '../../types/quiz';
 
 // Local interface with required questions array
 interface Quiz extends Omit<QuizApiType, 'questions'> {

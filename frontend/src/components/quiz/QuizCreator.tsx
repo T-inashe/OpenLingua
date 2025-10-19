@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 import { 
   Plus, 
   Trash2, 
@@ -9,14 +10,15 @@ import {
   BookOpen
 } from 'lucide-react';
 import quizService from '../../services/quizService';
-import type { Quiz, QuizData } from '../../types/quiz';
+import { createQuiz as createQuizApi, updateQuiz as updateQuizApi } from '../../services/quizApi';
+import type { Quiz as ApiQuiz, QuizData as ApiQuizData, QuizQuestion as ApiQuizQuestion } from '../../types/quiz';
 
 // Component props interface
 interface QuizCreatorProps {
   courseId: string;
   onSuccess: () => void;
   onCancel: () => void;
-  existingQuiz?: Quiz | null;
+  existingQuiz?: ApiQuiz | null;
 }
 
 // Internal quiz data structure for form
@@ -42,7 +44,7 @@ interface QuizFormQuestion {
 
 const QuizCreator = ({ courseId, onSuccess, onCancel, existingQuiz = null }: QuizCreatorProps) => {
   // Convert existing quiz to form format
-  const convertQuizToFormData = (quiz: Quiz | null): QuizFormData => {
+  const convertQuizToFormData = (quiz: ApiQuiz | null): QuizFormData => {
     if (!quiz) {
       return {
         title: '',
@@ -54,16 +56,44 @@ const QuizCreator = ({ courseId, onSuccess, onCancel, existingQuiz = null }: Qui
       };
     }
 
+    // Ensure difficulty matches our union
+    const allowedDifficulties = ['beginner', 'intermediate', 'advanced'] as const;
+    const normalizedDifficulty = allowedDifficulties.includes(
+      (quiz.difficulty || 'beginner') as (typeof allowedDifficulties)[number]
+    )
+      ? ((quiz.difficulty || 'beginner') as (typeof allowedDifficulties)[number])
+      : 'beginner';
+
+    // Map API question type to form type (API may use 'short-answer')
+    const mapApiTypeToForm = (
+      t: ApiQuizQuestion['type']
+    ): QuizFormQuestion['type'] => {
+      switch (t) {
+        case 'short-answer':
+          return 'fill-in-blank';
+        case 'multiple-choice':
+        case 'true-false':
+        case 'fill-in-blank':
+        case 'matching':
+          return t;
+        // API may not return 'matching', keep mapping safe
+        default:
+          return 'multiple-choice';
+      }
+    };
+
+    const apiQuestions = (quiz.questions ?? []) as NonNullable<ApiQuiz['questions']>;
+
     return {
       title: quiz.title,
-      description: quiz.description,
+      description: quiz.description || '',
       category: quiz.category || 'general',
-      difficulty: quiz.difficulty || 'beginner',
+      difficulty: normalizedDifficulty,
       timeLimit: quiz.timeLimit || 30,
-      questions: quiz.questions.map(q => ({
+      questions: apiQuestions.map(q => ({
         id: q.id,
         question: q.question,
-        type: q.type,
+        type: mapApiTypeToForm(q.type),
         options: q.options || [],
         correctAnswer: q.correctAnswer,
         explanation: q.explanation,
@@ -78,6 +108,7 @@ const QuizCreator = ({ courseId, onSuccess, onCancel, existingQuiz = null }: Qui
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(1);
 
+  const { theme } = useTheme();
   // Add new question
   const addQuestion = (): void => {
     const newQuestion: QuizFormQuestion = {
@@ -129,22 +160,34 @@ const QuizCreator = ({ courseId, onSuccess, onCancel, existingQuiz = null }: Qui
   };
 
   // Convert form data to QuizData format
-  const convertToQuizData = (formData: QuizFormData): QuizData => {
+  const convertToQuizData = (formData: QuizFormData): ApiQuizData => {
+    // Normalize question type names to API-supported values
+    const normalizeType = (t: QuizFormQuestion['type']): ApiQuizData['questions'][number]['type'] => {
+      switch (t) {
+        case 'fill-in-blank':
+          return 'short-answer';
+        case 'matching':
+          // matching isn't supported by API; treat as multiple-choice
+          return 'multiple-choice';
+        default:
+          return t as ApiQuizData['questions'][number]['type'];
+      }
+    };
+
     return {
       title: formData.title,
       description: formData.description,
       questions: formData.questions.map(q => ({
         question: q.question,
-        type: q.type,
+        type: normalizeType(q.type),
         options: q.options,
-        correctAnswer: q.correctAnswer,
+        correctAnswer: Array.isArray(q.correctAnswer) ? (q.correctAnswer[0] || '') : (q.correctAnswer as string),
         explanation: q.explanation,
         points: q.points
       })),
       timeLimit: formData.timeLimit,
-      attempts: 3, // Default values required by QuizData
       passingScore: 70,
-      isActive: true
+      maxAttempts: 3
     };
   };
 
@@ -155,16 +198,17 @@ const QuizCreator = ({ courseId, onSuccess, onCancel, existingQuiz = null }: Qui
       setError(null);
 
       // Convert form data to QuizData format
-      const quizDataToSave = convertToQuizData(quizData);
+  const quizDataToSave = convertToQuizData(quizData);
 
       // Validate quiz data
-      quizService.validateQuizData(quizDataToSave);
+  // Validate using service (relaxed types) by casting to any to avoid union mismatches
+  quizService.validateQuizData(quizDataToSave as any);
 
       let result;
       if (existingQuiz) {
-        result = await quizService.updateQuiz(courseId, existingQuiz.id, quizDataToSave);
+        result = await updateQuizApi(courseId, existingQuiz.id, quizDataToSave);
       } else {
-        result = await quizService.createCourseQuiz(courseId, quizDataToSave);
+        result = await createQuizApi(courseId, quizDataToSave);
       }
 
       // Handle response (assuming it might have a mode property for offline handling)
@@ -339,23 +383,28 @@ const QuizCreator = ({ courseId, onSuccess, onCancel, existingQuiz = null }: Qui
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[90] p-4"
+      onClick={onCancel}
+    >
+      <div
+        className={`${theme === 'dark' ? 'bg-slate-900 text-white border border-white/10' : 'bg-white text-slate-900 border border-gray-200'} rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden`}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-6 border-b border-white/10">
           <div className="flex justify-between items-center">
-            <h2 className="text-white text-xl font-bold">
+            <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
               {existingQuiz ? 'Edit Quiz' : 'Create New Quiz'}
             </h2>
             <button
               onClick={onCancel}
-              className="text-gray-400 hover:text-white"
+              className={`${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-slate-900'}`}
             >
               <X className="w-6 h-6" />
             </button>
           </div>
         </div>
-
         <div className="flex h-[calc(90vh-80px)]">
           {/* Steps Sidebar */}
           <div className="w-64 bg-white/5 p-6 border-r border-white/10">

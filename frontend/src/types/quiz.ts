@@ -1,42 +1,73 @@
-// Quiz types for the quiz service
+// Centralized Quiz Types used across UI and API client
+
+export type QuestionType =
+  | 'multiple-choice'
+  | 'true-false'
+  | 'short-answer'
+  | 'fill-in-blank'
+  | 'matching';
 
 export interface QuizQuestion {
   id: string;
   question: string;
-  type: 'multiple-choice' | 'true-false' | 'fill-in-blank' | 'matching';
+  type: QuestionType;
   options?: string[];
-  correctAnswer: string | string[];
+  // Transport/persisted representation uses a single string
+  correctAnswer: string;
   explanation?: string;
   points: number;
 }
 
+export interface QuizData {
+  title: string;
+  description?: string;
+  questions: Omit<QuizQuestion, 'id'>[];
+  timeLimit?: number; // minutes
+  passingScore: number;
+  maxAttempts?: number;
+  // Optional metadata used by UI
+  category?: string;
+  difficulty?: string;
+  // Optional activation flag
+  isActive?: boolean;
+}
+
 export interface Quiz {
   id: string;
-  title: string;
-  description: string;
+  externalQuizId: string;
   courseId: string;
-  questions: QuizQuestion[];
-  timeLimit?: number; // in minutes
-  attempts: number;
+  title: string;
+  description?: string;
+  category?: string;
+  difficulty?: string;
+  questions?: QuizQuestion[];
+  questionCount?: number;
+  timeLimit?: number; // minutes
   passingScore: number;
+  maxAttempts: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  // Additional properties for UI display
-  questionCount?: number;
-  category?: string;
-  difficulty?: 'beginner' | 'intermediate' | 'advanced';
-  mode?: 'online' | 'offline'; // For offline mode indication
+  // For offline mode indication
+  mode?: 'online' | 'offline';
 }
 
-export interface QuizData {
-  title: string;
-  description: string;
-  questions: Omit<QuizQuestion, 'id'>[];
-  timeLimit?: number;
-  attempts: number;
-  passingScore: number;
-  isActive: boolean;
+export interface QuizAttempt {
+  id: string;
+  quizId: string;
+  userId: string;
+  score: number;
+  percentage?: number;
+  answers: Record<string, string>;
+  timeSpent: number;
+  passed: boolean;
+  startedAt: string;
+  completedAt: string;
+  createdAt: string;
+  correctAnswers?: number;
+  totalQuestions?: number;
+  attemptNumber?: number;
+  attemptsRemaining?: number;
 }
 
 export interface QuizResult {

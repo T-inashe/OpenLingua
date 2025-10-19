@@ -2,16 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProAlert } from '../../context/ProAlertContext';
 import { createQuiz, updateQuiz, getQuiz } from '../../services/quizApi';
+import type { QuizQuestion } from '../../types/quiz';
+import { useTheme } from '../../context/ThemeContext';
 
-interface QuizQuestion {
-  id: string;
-  question: string;
-  type: 'multiple-choice' | 'true-false' | 'short-answer';
-  options?: string[];
-  correctAnswer: string;
-  explanation?: string;
-  points: number;
-}
+// Use the QuizQuestion type from the API to avoid mismatches across modules
 
 interface QuizEditorProps {
   courseId: string;
@@ -23,6 +17,7 @@ interface QuizEditorProps {
 const QuizEditor: React.FC<QuizEditorProps> = ({ courseId, quizId, onSave, onCancel }) => {
   const navigate = useNavigate();
   const { success, error } = useProAlert();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -202,13 +197,13 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ courseId, quizId, onSave, onCan
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className={`${theme === 'dark' ? 'bg-slate-900 text-white border border-white/10' : 'bg-white text-slate-900 border border-gray-200'} rounded-lg shadow-lg p-6`}>
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
             {quizId ? 'Edit Quiz' : 'Create New Quiz'}
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} mt-2`}>
             Design a quiz to test your students' knowledge
           </p>
         </div>
@@ -217,28 +212,28 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ courseId, quizId, onSave, onCan
         <div className="space-y-6 mb-8">
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
               Quiz Title *
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-gray-300'}`}
               placeholder="e.g., Module 1 Assessment"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
               Description
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${theme === 'dark' ? 'bg-slate-800 text-white border border-white/10' : 'bg-white text-slate-900 border border-gray-300'}`}
               placeholder="Brief description of what this quiz covers..."
             />
           </div>
@@ -341,29 +336,29 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ courseId, quizId, onSave, onCan
 
           {/* Questions List */}
           {questions.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">No questions added yet</p>
-              <p className="text-sm text-gray-400 mt-2">Click "Add Question" to get started</p>
+            <div className={`text-center py-12 rounded-lg ${theme === 'dark' ? 'bg-slate-800' : 'bg-gray-50'}`}>
+              <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>No questions added yet</p>
+              <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>Click "Add Question" to get started</p>
             </div>
           ) : (
             <div className="space-y-4">
               {questions.map((question, index) => (
                 <div
                   key={question.id}
-                  className="border border-gray-300 rounded-lg p-4 bg-gray-50"
+                  className={`rounded-lg p-4 ${theme === 'dark' ? 'border border-white/10 bg-slate-800' : 'border border-gray-300 bg-gray-50'}`}
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="font-semibold text-gray-700">Q{index + 1}.</span>
-                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                        <span className={`font-semibold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>Q{index + 1}.</span>
+                        <span className={`text-xs px-2 py-1 rounded ${theme === 'dark' ? 'bg-blue-400/20 text-blue-200' : 'bg-blue-100 text-blue-700'}`}>
                           {question.type}
                         </span>
-                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+                        <span className={`text-xs px-2 py-1 rounded ${theme === 'dark' ? 'bg-green-400/20 text-green-200' : 'bg-green-100 text-green-700'}`}>
                           {question.points} {question.points === 1 ? 'point' : 'points'}
                         </span>
                       </div>
-                      <p className="text-gray-900 mb-2">{question.question}</p>
+                      <p className={`${theme === 'dark' ? 'text-white' : 'text-slate-900'} mb-2`}>{question.question}</p>
                       {question.type === 'multiple-choice' && question.options && (
                         <ul className="ml-4 space-y-1">
                           {question.options.filter(o => o.trim()).map((option, i) => (
@@ -371,8 +366,8 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ courseId, quizId, onSave, onCan
                               key={i}
                               className={`text-sm ${
                                 option === question.correctAnswer
-                                  ? 'text-green-600 font-medium'
-                                  : 'text-gray-600'
+                                  ? `${theme === 'dark' ? 'text-green-300' : 'text-green-600'} font-medium`
+                                  : `${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`
                               }`}
                             >
                               {String.fromCharCode(65 + i)}. {option}
@@ -382,7 +377,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ courseId, quizId, onSave, onCan
                         </ul>
                       )}
                       {question.type === 'true-false' && (
-                        <p className="text-sm text-green-600 font-medium ml-4">
+                        <p className={`text-sm font-medium ml-4 ${theme === 'dark' ? 'text-green-300' : 'text-green-600'}`}>
                           Correct: {question.correctAnswer}
                         </p>
                       )}
@@ -393,7 +388,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ courseId, quizId, onSave, onCan
                       {index > 0 && (
                         <button
                           onClick={() => handleMoveQuestion(index, 'up')}
-                          className="p-2 text-gray-600 hover:bg-gray-200 rounded"
+                          className={`p-2 rounded ${theme === 'dark' ? 'text-gray-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-200'}`}
                           title="Move up"
                         >
                           ↑
@@ -402,7 +397,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ courseId, quizId, onSave, onCan
                       {index < questions.length - 1 && (
                         <button
                           onClick={() => handleMoveQuestion(index, 'down')}
-                          className="p-2 text-gray-600 hover:bg-gray-200 rounded"
+                          className={`p-2 rounded ${theme === 'dark' ? 'text-gray-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-200'}`}
                           title="Move down"
                         >
                           ↓
@@ -410,14 +405,14 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ courseId, quizId, onSave, onCan
                       )}
                       <button
                         onClick={() => handleEditQuestion(question)}
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+                        className={`p-2 rounded ${theme === 'dark' ? 'text-blue-300 hover:bg-blue-400/10' : 'text-blue-600 hover:bg-blue-100'}`}
                         title="Edit"
                       >
                         ✎
                       </button>
                       <button
                         onClick={() => handleDeleteQuestion(question.id)}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded"
+                        className={`p-2 rounded ${theme === 'dark' ? 'text-red-300 hover:bg-red-400/10' : 'text-red-600 hover:bg-red-100'}`}
                         title="Delete"
                       >
                         ✕
@@ -474,6 +469,7 @@ interface QuestionFormProps {
 }
 
 const QuestionForm: React.FC<QuestionFormProps> = ({ question, onChange, onSave, onCancel }) => {
+  const { theme } = useTheme();
   const handleOptionChange = (index: number, value: string) => {
     const newOptions = [...(question.options || ['', '', '', ''])];
     newOptions[index] = value;
@@ -492,7 +488,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({ question, onChange, onSave,
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4" onClick={onCancel}>
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative" onClick={(e) => e.stopPropagation()}>
+  <div className={`${theme === 'dark' ? 'bg-slate-900 text-white border border-white/10' : 'bg-white text-slate-900 border border-gray-200'} rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative`} onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           <h3 className="text-2xl font-bold text-gray-900 mb-6">
             {question.id.startsWith('temp-') ? 'Add Question' : 'Edit Question'}
